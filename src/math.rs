@@ -47,16 +47,20 @@ impl Div<f64> for Vec3 {
 }
 
 impl Vec3 {
-    fn new(c: f64) -> Self {
+    pub fn new(c: f64) -> Self {
         Vec3(c, c, c)
     }
 
-    fn length_sq(self) -> f64 {
+    pub fn length_sq(&self) -> f64 {
         self.0 * self.0 + self.1 * self.1 + self.2 * self.2
     }
 
-    fn length(self) -> f64 {
+    pub fn length(&self) -> f64 {
         self.length_sq().sqrt()
+    }
+
+    pub fn normalize(&self) -> Self {
+        *self / self.length()
     }
 }
 
@@ -86,6 +90,18 @@ pub fn max_elm(v: Vec3) -> f64 {
         max = v.2
     }
     max
+}
+
+pub fn min_elm(v: Vec3) -> f64 {
+    let mut min = v.0;
+
+    if min > v.1 {
+        min = v.1;
+    }
+    if min > v.2 {
+        min = v.2;
+    }
+    min
 }
 
 impl Display for Vec3 {
