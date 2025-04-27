@@ -80,8 +80,8 @@ fn hit_sphere(center: &Point3, radius: &f64, ray: &Ray, max_dist: f64) -> Option
         return None;
     }
 
-    let t1 = oc_dir - disc;
-    let t2 = oc_dir + disc;
+    let t1 = oc_dir - disc.sqrt();
+    let t2 = oc_dir + disc.sqrt();
     let t;
 
     if t1 > 0. {
@@ -108,7 +108,7 @@ fn hit_plane(axis: &Axis, pos: &f64, ray: &Ray, max_dist: f64) -> Option<(f64, V
             }
 
             let t = (pos - ray.org.0) / ray.dir.0;
-            if t > max_dist {
+            if t > max_dist || t < 0. {
                 None
             } else {
                 Some((t, Vec3(1., 0., 0.)))
@@ -120,7 +120,7 @@ fn hit_plane(axis: &Axis, pos: &f64, ray: &Ray, max_dist: f64) -> Option<(f64, V
             }
 
             let t = (pos - ray.org.1) / ray.dir.1;
-            if t > max_dist {
+            if t > max_dist || t < 0. {
                 None
             } else {
                 Some((t, Vec3(0., 1., 0.)))
@@ -132,7 +132,7 @@ fn hit_plane(axis: &Axis, pos: &f64, ray: &Ray, max_dist: f64) -> Option<(f64, V
             }
 
             let t = (pos - ray.org.2) / ray.dir.2;
-            if t > max_dist {
+            if t > max_dist || t < 0. {
                 None
             } else {
                 Some((t, Vec3(0., 0., 1.)))

@@ -16,7 +16,7 @@ pub struct Camera {
     pub lens_radius: f64,
     lens_center: Point3,
     lens_to_plane: f64,
-    iso: f64,
+    pub iso: f64,
     pub spp: u32,  //samples per pixel
     pub sspp: u32, //super samples per pixel
 }
@@ -71,13 +71,13 @@ impl Camera {
 
         let lens_pos =
             self.lens_center + self.sensor_u * r * theta.cos() + self.sensor_v * r * theta.sin();
-        let l = (lens_pos - pixel_pos).length();
+        let l_sq = (lens_pos - pixel_pos).length_sq();
         let cos_theta = dot((lens_pos - pixel_pos).normalize(), self.sensor_dir);
-        (cos_theta * cos_theta / (l * l), lens_pos)
+        (cos_theta * cos_theta / l_sq, lens_pos)
     }
 
     pub fn first_dir(&self, pixel_pos: Point3, lens_pos: Point3) -> Vec3 {
-        let plane_pos = (lens_pos - pixel_pos) * (self.sensor_to_lens + self.lens_to_plane)
+        let plane_pos = (self.lens_center - pixel_pos) * (self.sensor_to_lens + self.lens_to_plane)
             / self.sensor_to_lens
             + pixel_pos;
         (plane_pos - lens_pos).normalize()

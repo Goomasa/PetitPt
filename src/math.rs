@@ -115,6 +115,13 @@ pub fn is_valid(v: &Vec3) -> bool {
     true
 }
 
+pub fn gamma_rev(v: Color) -> (u32, u32, u32) {
+    let r = (v.0.clamp(0., 1.).powf(1. / 2.2) * 255.) as u32;
+    let g = (v.1.clamp(0., 1.).powf(1. / 2.2) * 255.) as u32;
+    let b = (v.2.clamp(0., 1.).powf(1. / 2.2) * 255.) as u32;
+    (r, g, b)
+}
+
 impl Display for Vec3 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "({}, {}, {})", self.0, self.1, self.2)
