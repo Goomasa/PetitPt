@@ -104,6 +104,17 @@ pub fn min_elm(v: &Vec3) -> f64 {
     min
 }
 
+pub fn is_valid(v: &Vec3) -> bool {
+    if v.0.is_nan() || v.1.is_nan() || v.2.is_nan() {
+        return false;
+    } else if v.0 < 0. || v.1 < 0. || v.2 < 0. {
+        return false;
+    } else if v.0 > 100000. || v.1 > 100000. || v.2 > 100000. {
+        return false;
+    }
+    true
+}
+
 impl Display for Vec3 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "({}, {}, {})", self.0, self.1, self.2)

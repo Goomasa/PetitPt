@@ -1,24 +1,24 @@
 use crate::{
-    math::{cross, Point3, Vec3, PI},
+    math::{cross, dot, Point3, Vec3, PI},
     random::XorRand,
 };
 
-struct Camera {
-    pixel_w: u32,
-    pixel_h: u32,
+pub struct Camera {
+    pub pixel_w: u32,
+    pub pixel_h: u32,
     sensor_dir: Vec3,
-    sensor_center: Point3,
-    sensor_w: f64,
-    sensor_h: f64,
-    sensor_u: Vec3,
-    sensor_v: Vec3,
+    pub sensor_center: Point3,
+    pub sensor_w: f64,
+    pub sensor_h: f64,
+    pub sensor_u: Vec3,
+    pub sensor_v: Vec3,
     sensor_to_lens: f64,
-    lens_radius: f64,
+    pub lens_radius: f64,
     lens_center: Point3,
     lens_to_plane: f64,
     iso: f64,
-    spp: u32,  //samples per pixel
-    sspp: u32, //super samples per pixel
+    pub spp: u32,  //samples per pixel
+    pub sspp: u32, //super samples per pixel
 }
 
 impl Camera {
@@ -29,7 +29,7 @@ impl Camera {
         sensor_c: Point3,
         sensor_w: f64,
         lens_r: f64,
-        focal_len: f64,
+        focal_len: f64, //=sensor_to_lens
         lens_to_plane: f64,
         iso_scale: f64,
         spp: u32,
@@ -64,12 +64,16 @@ impl Camera {
         }
     }
 
-    pub fn sample_lens(&self, rand: &mut XorRand) -> Point3 {
-        //return sample_pos
+    pub fn sample_lens(&self, pixel_pos: Point3, rand: &mut XorRand) -> (f64, Point3) {
+        //return (coefficient=cos^2/l^2, sample_pos)
         let theta = 2.0 * PI * rand.next01();
         let r = rand.next01().sqrt() * self.lens_radius;
 
-        self.lens_center + self.sensor_u * r * theta.cos() + self.sensor_v * r * theta.sin()
+        let lens_pos =
+            self.lens_center + self.sensor_u * r * theta.cos() + self.sensor_v * r * theta.sin();
+        let l = (lens_pos - pixel_pos).length();
+        let cos_theta = dot((lens_pos - pixel_pos).normalize(), self.sensor_dir);
+        (cos_theta * cos_theta / (l * l), lens_pos)
     }
 
     pub fn first_dir(&self, pixel_pos: Point3, lens_pos: Point3) -> Vec3 {
