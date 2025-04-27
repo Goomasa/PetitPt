@@ -1,29 +1,19 @@
 use bmp::{px, Image, Pixel};
+//using crate "bmp", https://github.com/sondrele/rust-bmp/tree/master/src
 
 use crate::{
-    camera::Camera,
-    math::{gamma_rev, is_valid, Color, PI},
+    camera::Camara,
+    math::{gamma_rev, is_valid, Color},
     radiance::radiance,
     random::XorRand,
     ray::Ray,
     scene::Scene,
 };
 
-pub fn render(camera: &Camera, scene: &Scene) {
-    let pixel_w = camera.pixel_w;
-    let pixel_h = camera.pixel_h;
-    let sensor_w_per_px = camera.sensor_w / pixel_w as f64;
-    let sensor_h_per_px = camera.sensor_h / pixel_h as f64;
-    let superpx_u = camera.sensor_u * sensor_w_per_px / camera.sspp as f64;
-    let superpx_v = camera.sensor_v * sensor_h_per_px / camera.sspp as f64;
-
-    let sensor_corner = camera.sensor_center
-        - camera.sensor_u * camera.sensor_w / 2.
-        - camera.sensor_v * camera.sensor_h / 2.;
-
-    let pdf_inv =
-        sensor_w_per_px * sensor_h_per_px * (PI * camera.lens_radius * camera.lens_radius)
-            / ((camera.spp as f64) * (camera.sspp.pow(2) as f64));
+pub fn render(camera: &impl Camara, scene: &Scene) {
+    let (pixel_w, pixel_h) = camera.get_pixel();
+    let (spp, sspp) = camera.get_sample();
+    let coeff = camera.get_coeff();
 
     let mut img = Image::new(pixel_w, pixel_h);
 
@@ -32,16 +22,12 @@ pub fn render(camera: &Camera, scene: &Scene) {
             let mut rand = XorRand::new(u * v);
             let mut accumlated_color = Color::new(0.);
 
-            for sv in 0..camera.sspp {
-                for su in 0..camera.sspp {
-                    let pixel_pos = sensor_corner
-                        + superpx_u * ((u * camera.sspp + su) as f64 + 0.5)
-                        + superpx_v * ((v * camera.sspp + sv) as f64 + 0.5);
-                    let (coeff, org) = camera.sample_lens(pixel_pos, &mut rand);
-                    let dir = camera.first_dir(pixel_pos, org);
+            for sv in 0..sspp {
+                for su in 0..sspp {
+                    let (g_term, org, dir) = camera.setup(u, v, su, sv, &mut rand);
 
-                    for _ in 0..camera.spp {
-                        let rad = radiance(scene, Ray { org, dir }, &mut rand) * coeff;
+                    for _ in 0..spp {
+                        let rad = radiance(scene, Ray { org, dir }, &mut rand) * g_term;
                         if !is_valid(&rad) {
                             continue;
                         }
@@ -51,8 +37,8 @@ pub fn render(camera: &Camera, scene: &Scene) {
                 }
             }
 
-            let rgb = gamma_rev(accumlated_color * pdf_inv * camera.iso);
-            img.set_pixel(pixel_w - u - 1, pixel_h - v - 1, px!(rgb.0, rgb.1, rgb.2));
+            let rgb = gamma_rev(accumlated_color * coeff);
+            img.set_pixel(u, v, px!(rgb.0, rgb.1, rgb.2));
         }
         println!("{v}");
     }
