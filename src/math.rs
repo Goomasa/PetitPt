@@ -80,7 +80,7 @@ pub fn cross(v: Vec3, w: Vec3) -> Vec3 {
     )
 }
 
-pub fn max_elm(v: Vec3) -> f64 {
+pub fn max_elm(v: &Vec3) -> f64 {
     let mut max = v.0;
 
     if max < v.1 {
@@ -92,7 +92,7 @@ pub fn max_elm(v: Vec3) -> f64 {
     max
 }
 
-pub fn min_elm(v: Vec3) -> f64 {
+pub fn min_elm(v: &Vec3) -> f64 {
     let mut min = v.0;
 
     if min > v.1 {

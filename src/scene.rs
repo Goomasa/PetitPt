@@ -1,9 +1,13 @@
-use crate::{math::Color, object::Object};
+use crate::{
+    math::Color,
+    object::Object,
+    ray::{HitRecord, Ray},
+};
 
 pub struct Scene<'a> {
-    objects: Vec<&'a Object>,
-    background: Color,
-    lights: Vec<&'a Object>,
+    pub objects: Vec<&'a Object>,
+    pub background: Color,
+    pub lights: Vec<&'a Object>,
 }
 
 impl<'a> Scene<'a> {
@@ -19,5 +23,12 @@ impl<'a> Scene<'a> {
             background: back,
             lights: lights,
         }
+    }
+
+    pub fn intersect(&self, ray: &Ray, record: &mut HitRecord) -> bool {
+        for obj in self.objects.iter() {
+            let _ = obj.hit(ray, record);
+        }
+        record.obj_id != -1
     }
 }
