@@ -62,6 +62,12 @@ impl Object {
             }
         }
     }
+
+    pub fn get_bxdf(&self) -> Bxdf {
+        match self {
+            Object::Sphere { bxdf, .. } | Object::Plane { bxdf, .. } => *bxdf,
+        }
+    }
 }
 
 fn hit_sphere(center: &Point3, radius: &f64, ray: &Ray, max_dist: f64) -> Option<(f64, Vec3)> {
