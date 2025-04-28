@@ -1,3 +1,4 @@
+use crate::random::XorRand;
 use crate::ray::*;
 use crate::{material::Bxdf, math::*};
 
@@ -139,4 +140,30 @@ fn hit_plane(axis: &Axis, pos: &f64, ray: &Ray, max_dist: f64) -> Option<(f64, V
             }
         }
     }
+}
+
+pub fn sample_sphere(org: Point3, center: &Point3, radius: f64, rand: &mut XorRand) -> (f64, Vec3) {
+    let pc = *center - org;
+    let cos_mu = (1. - (radius * radius / pc.length_sq())).sqrt();
+
+    let w = pc.normalize();
+    let u = if w.0 > EPS || w.0 < (-EPS) {
+        cross(w, Vec3(0., 1., 0.)).normalize()
+    } else {
+        cross(w, Vec3(1., 0., 0.)).normalize()
+    };
+    let v = cross(w, u);
+
+    let phi = 2. * PI * rand.next01();
+    let cos_theta = 1. - rand.next01() * (1. - cos_mu);
+    let sin_theta = (1. - cos_theta * cos_theta).sqrt();
+
+    let dir = u * sin_theta * phi.cos() + v * sin_theta * phi.sin() + w * cos_theta;
+    let pdf = 1. / (2. * PI * (1. - cos_mu));
+    (pdf, dir)
+}
+
+pub fn sample_sphere_pdf(org: Point3, center: &Point3, radius: f64) -> f64 {
+    let cos_mu = (1. - (radius * radius / (*center - org).length_sq())).sqrt();
+    1. / (2. * PI * (1. - cos_mu))
 }

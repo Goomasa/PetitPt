@@ -1,6 +1,6 @@
 use crate::{
-    material::{reflection_dir, refraction_dir, sample_lambert, Bxdf},
-    math::{dot, max_elm, multiply, Color, Vec3},
+    material::{reflection_dir, refraction_dir, sample_lambert, sample_lambert_pdf, Bxdf},
+    math::{dot, max_elm, multiply, Color, Vec3, PI},
     random::XorRand,
     ray::{HitRecord, Ray},
     scene::Scene,
@@ -8,6 +8,7 @@ use crate::{
 
 const DEPTH: u32 = 6;
 const MAX_DEPTH: u32 = 30;
+const PI_INV: f64 = 1. / PI;
 
 pub fn radiance(scene: &Scene, ray: Ray, rand: &mut XorRand) -> Color {
     let mut record = HitRecord::new();
@@ -18,7 +19,11 @@ pub fn radiance(scene: &Scene, ray: Ray, rand: &mut XorRand) -> Color {
     let mut throughput = Vec3::new(1.);
     let mut rad = Vec3::new(0.);
 
+    let mut prev_record;
+    let mut nee_result;
+
     for time in 0.. {
+        prev_record = record;
         record = HitRecord::new();
         if !scene.intersect(&now_ray, &mut record) {
             rad = rad + multiply(throughput, scene.background) / pdf;
@@ -51,16 +56,36 @@ pub fn radiance(scene: &Scene, ray: Ray, rand: &mut XorRand) -> Color {
 
         match record.bxdf {
             Bxdf::Light => {
-                rad = rad + multiply(throughput, record.color) / pdf;
+                if let Bxdf::Lambertian = prev_record.bxdf {
+                    let nee_pdf = scene.sample_obj_pdf(record.obj_id, prev_record.pos);
+                    let pt_pdf = sample_lambert_pdf(
+                        (record.pos - prev_record.pos).normalize(),
+                        prev_record.normal,
+                    );
+                    let mis_weight = pt_pdf / (nee_pdf + pt_pdf);
+                    rad = rad + multiply(throughput, record.color) * mis_weight / pdf;
+                } else {
+                    rad = rad + multiply(throughput, record.color) / pdf;
+                }
                 break;
             }
             Bxdf::Lambertian => {
                 let out_dir = sample_lambert(&orienting_normal, rand);
+                let org = record.pos + orienting_normal * 0.00001;
                 now_ray = Ray {
-                    org: record.pos + orienting_normal * 0.00001,
+                    org: org,
                     dir: out_dir,
                 };
+
+                nee_result = scene.nee(org, rand);
                 throughput = multiply(throughput, record.color);
+
+                if nee_result.pdf != 0. {
+                    let dir_cosine = dot(orienting_normal, nee_result.dir).abs();
+                    let mis_weight = 1. / (nee_result.pdf + dir_cosine * PI_INV);
+                    throughput = multiply(throughput, record.color);
+                    rad = rad + multiply(throughput, nee_result.color * PI_INV) * mis_weight / pdf;
+                }
             }
             Bxdf::Specular => {
                 let out_dir = reflection_dir(orienting_normal, now_ray.dir);

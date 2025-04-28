@@ -27,3 +27,19 @@ impl HitRecord {
         }
     }
 }
+
+pub struct NeeResult {
+    pub dir: Vec3,
+    pub color: Color,
+    pub pdf: f64,
+}
+
+impl NeeResult {
+    pub fn new() -> Self {
+        NeeResult {
+            dir: Vec3::new(0.),
+            color: Color::new(0.),
+            pdf: 0.,
+        }
+    }
+}

@@ -82,3 +82,7 @@ pub fn refraction_dir(
         )
     }
 }
+
+pub fn sample_lambert_pdf(dir: Vec3, normal: Vec3) -> f64 {
+    dot(dir, normal).abs() / PI
+}

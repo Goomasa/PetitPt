@@ -18,7 +18,7 @@ mod ray;
 mod render;
 mod scene;
 
-fn sample_scene1() {
+fn example1() {
     let plane: Object = Plane {
         axis: Axis::Y,
         pos: 0.,
@@ -87,7 +87,7 @@ fn sample_scene1() {
     let _ = render(&camera, &scene);
 }
 
-fn sample_scene2() {
+fn example2() {
     let plane: Object = Plane {
         axis: Axis::Y,
         pos: 0.,
@@ -140,12 +140,12 @@ fn sample_scene2() {
     let camera = PinholeModel::new(
         Vec3(0., 3., 20.),
         0.75,
-        400,
+        600,
         40.,
         Vec3(0., 0., -1.).normalize(),
         15.,
-        4,
-        4,
+        2,
+        2,
     );
 
     let scene = Scene::new(objects, Vec3::new(0.));
@@ -155,5 +155,5 @@ fn sample_scene2() {
 
 fn main() {
     //sample_scene1();
-    sample_scene2();
+    example2();
 }
