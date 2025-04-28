@@ -1,4 +1,4 @@
-use crate::random::XorRand;
+use crate::random::{FreshId, XorRand};
 use crate::ray::*;
 use crate::{material::Bxdf, math::*};
 
@@ -24,9 +24,71 @@ pub enum Object {
         color: Color,
         id: i32,
     },
+
+    Rectangle {
+        axis: Axis,
+        min_p: Point3,
+        max_p: Point3,
+        bxdf: Bxdf,
+        color: Color,
+        id: i32,
+    },
 }
 
 impl Object {
+    pub fn set_sphere(
+        center: Point3,
+        radius: f64,
+        bxdf: Bxdf,
+        color: Color,
+        freshid: &mut FreshId,
+    ) -> Object {
+        Object::Sphere {
+            center,
+            radius,
+            bxdf,
+            color,
+            id: freshid.gen_id(),
+        }
+    }
+
+    pub fn set_plane(
+        axis: Axis,
+        pos: f64,
+        bxdf: Bxdf,
+        color: Color,
+        freshid: &mut FreshId,
+    ) -> Object {
+        Object::Plane {
+            axis,
+            pos,
+            bxdf,
+            color,
+            id: freshid.gen_id(),
+        }
+    }
+
+    pub fn set_rect(
+        axis: Axis,
+        p: Point3,
+        q: Point3,
+        bxdf: Bxdf,
+        color: Color,
+        freshid: &mut FreshId,
+    ) -> Object {
+        let max_p = Vec3(fmax(p.0, q.0), fmax(p.1, q.1), fmax(p.2, q.2));
+        let min_p = Vec3(fmin(p.0, q.0), fmin(p.1, q.1), fmin(p.2, q.2));
+
+        Object::Rectangle {
+            axis,
+            min_p,
+            max_p,
+            bxdf,
+            color,
+            id: freshid.gen_id(),
+        }
+    }
+
     pub fn hit(&self, ray: &Ray, record: &mut HitRecord) {
         match self {
             Object::Sphere {
@@ -61,12 +123,45 @@ impl Object {
                     record.obj_id = *id;
                 }
             }
+            Object::Rectangle {
+                axis,
+                min_p,
+                max_p,
+                bxdf,
+                color,
+                id,
+            } => {
+                if let Some((t, normal)) = hit_rect(axis, max_p, min_p, ray, record.distance) {
+                    record.distance = t;
+                    record.pos = ray.org + ray.dir * t;
+                    record.normal = normal;
+                    record.bxdf = *bxdf;
+                    record.color = *color;
+                    record.obj_id = *id;
+                }
+            }
         }
     }
 
     pub fn get_bxdf(&self) -> Bxdf {
         match self {
-            Object::Sphere { bxdf, .. } | Object::Plane { bxdf, .. } => *bxdf,
+            Object::Sphere { bxdf, .. }
+            | Object::Plane { bxdf, .. }
+            | Object::Rectangle { bxdf, .. } => *bxdf,
+        }
+    }
+
+    pub fn get_area(&self) -> f64 {
+        match self {
+            Object::Sphere { radius, .. } => 2. * PI * radius,
+            Object::Plane { .. } => INF,
+            Object::Rectangle {
+                axis, min_p, max_p, ..
+            } => match axis {
+                Axis::X => (max_p.1 - min_p.1) * (max_p.2 - min_p.2),
+                Axis::Y => (max_p.0 - min_p.0) * (max_p.2 - min_p.2),
+                Axis::Z => (max_p.0 - min_p.0) * (max_p.1 - min_p.1),
+            },
         }
     }
 }
@@ -142,6 +237,60 @@ fn hit_plane(axis: &Axis, pos: &f64, ray: &Ray, max_dist: f64) -> Option<(f64, V
     }
 }
 
+pub fn hit_rect(
+    axis: &Axis,
+    max_p: &Point3,
+    min_p: &Point3,
+    ray: &Ray,
+    max_dist: f64,
+) -> Option<(f64, Vec3)> {
+    let pos = match axis {
+        Axis::X => max_p.0,
+        Axis::Y => max_p.1,
+        Axis::Z => max_p.2,
+    };
+
+    if let Some((t, normal)) = hit_plane(&axis, &pos, ray, max_dist) {
+        let hitpoint = ray.org + ray.dir * t;
+        match axis {
+            Axis::X => {
+                if hitpoint.1 > max_p.1
+                    || hitpoint.1 < min_p.1
+                    || hitpoint.2 > max_p.2
+                    || hitpoint.2 < min_p.2
+                {
+                    return None;
+                } else {
+                    return Some((t, normal));
+                }
+            }
+            Axis::Y => {
+                if hitpoint.0 > max_p.0
+                    || hitpoint.0 < min_p.0
+                    || hitpoint.2 > max_p.2
+                    || hitpoint.2 < min_p.2
+                {
+                    return None;
+                } else {
+                    return Some((t, normal));
+                }
+            }
+            Axis::Z => {
+                if hitpoint.0 > max_p.0
+                    || hitpoint.0 < min_p.0
+                    || hitpoint.1 > max_p.1
+                    || hitpoint.1 < min_p.1
+                {
+                    return None;
+                } else {
+                    return Some((t, normal));
+                }
+            }
+        }
+    }
+    None
+}
+
 pub fn sample_sphere(org: Point3, center: &Point3, radius: f64, rand: &mut XorRand) -> (f64, Vec3) {
     let pc = *center - org;
     let cos_mu = (1. - (radius * radius / pc.length_sq())).sqrt();
@@ -163,7 +312,55 @@ pub fn sample_sphere(org: Point3, center: &Point3, radius: f64, rand: &mut XorRa
     (pdf, dir)
 }
 
+pub fn sample_rect(
+    org: Point3,
+    axis: &Axis,
+    max_p: &Point3,
+    min_p: &Point3,
+    rand: &mut XorRand,
+) -> (f64, Vec3) {
+    let diagnal = *max_p - *min_p;
+    let area;
+    let normal;
+    let oa;
+    let ob;
+    match axis {
+        Axis::X => {
+            area = diagnal.1 * diagnal.2;
+            normal = Vec3(1., 0., 0.);
+            oa = Vec3(0., diagnal.1, 0.);
+            ob = Vec3(0., 0., diagnal.2);
+        }
+        Axis::Y => {
+            area = diagnal.0 * diagnal.2;
+            normal = Vec3(0., 1., 0.);
+            oa = Vec3(diagnal.0, 0., 0.);
+            ob = Vec3(0., 0., diagnal.2);
+        }
+        Axis::Z => {
+            area = diagnal.0 * diagnal.1;
+            normal = Vec3(0., 0., 1.);
+            oa = Vec3(diagnal.0, 0., 0.);
+            ob = Vec3(0., diagnal.1, 0.);
+        }
+    }
+
+    let sample_pos = *min_p + oa * rand.next01() + ob * rand.next01();
+    let mut dir = sample_pos - org;
+    let l_sq = dir.length_sq();
+    dir = dir.normalize();
+    let cos_theta = dot(dir, normal).abs();
+    (l_sq / (area * cos_theta), dir)
+}
+
 pub fn sample_sphere_pdf(org: Point3, center: &Point3, radius: f64) -> f64 {
     let cos_mu = (1. - (radius * radius / (*center - org).length_sq())).sqrt();
     1. / (2. * PI * (1. - cos_mu))
+}
+
+pub fn sample_rect_pdf(org: Point3, pos: Point3, obj: &Object, normal: Vec3) -> f64 {
+    let area = obj.get_area();
+    let l_sq = (pos - org).length_sq();
+    let cos_theta = dot((pos - org).normalize(), normal).abs();
+    l_sq / (area * cos_theta)
 }

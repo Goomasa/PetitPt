@@ -57,7 +57,7 @@ pub fn radiance(scene: &Scene, ray: Ray, rand: &mut XorRand) -> Color {
         match record.bxdf {
             Bxdf::Light => {
                 if let Bxdf::Lambertian = prev_record.bxdf {
-                    let nee_pdf = scene.sample_obj_pdf(record.obj_id, prev_record.pos);
+                    let nee_pdf = scene.sample_obj_pdf(prev_record.pos, &record);
                     let pt_pdf = sample_lambert_pdf(
                         (record.pos - prev_record.pos).normalize(),
                         prev_record.normal,

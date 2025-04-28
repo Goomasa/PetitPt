@@ -1,6 +1,6 @@
 use crate::{
-    math::{Color, Point3},
-    object::{sample_sphere, sample_sphere_pdf, Object},
+    math::{Color, Point3, Vec3},
+    object::{sample_rect, sample_rect_pdf, sample_sphere, sample_sphere_pdf, Object},
     random::XorRand,
     ray::{HitRecord, NeeResult, Ray},
 };
@@ -40,6 +40,9 @@ impl<'a> Scene<'a> {
             let (pdf, dir) = match obj {
                 Object::Sphere { center, radius, .. } => sample_sphere(org, center, *radius, rand),
                 Object::Plane { .. } => continue,
+                Object::Rectangle {
+                    axis, min_p, max_p, ..
+                } => sample_rect(org, axis, max_p, min_p, rand),
             };
 
             let _ = self.intersect(&Ray { org, dir }, &mut record);
@@ -54,11 +57,12 @@ impl<'a> Scene<'a> {
         result
     }
 
-    pub fn sample_obj_pdf(&self, id: i32, org: Point3) -> f64 {
-        let obj = self.objects[id as usize];
+    pub fn sample_obj_pdf(&self, org: Point3, record: &HitRecord) -> f64 {
+        let obj = self.objects[record.obj_id as usize];
         match obj {
             Object::Sphere { center, radius, .. } => sample_sphere_pdf(org, center, *radius),
             Object::Plane { .. } => 0.,
+            Object::Rectangle { .. } => sample_rect_pdf(org, record.pos, obj, record.normal),
         }
     }
 }

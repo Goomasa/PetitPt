@@ -104,6 +104,22 @@ pub fn min_elm(v: &Vec3) -> f64 {
     min
 }
 
+pub fn fmax(a: f64, b: f64) -> f64 {
+    if a > b {
+        a
+    } else {
+        b
+    }
+}
+
+pub fn fmin(a: f64, b: f64) -> f64 {
+    if a > b {
+        b
+    } else {
+        a
+    }
+}
+
 pub fn is_valid(v: &Vec3) -> bool {
     if v.0.is_nan() || v.1.is_nan() || v.2.is_nan() {
         return false;
