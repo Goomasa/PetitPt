@@ -1,5 +1,5 @@
 use crate::{
-    math::{Color, Point3, Vec3},
+    math::{Color, Point3},
     object::{sample_rect, sample_rect_pdf, sample_sphere, sample_sphere_pdf, Object},
     random::XorRand,
     ray::{HitRecord, NeeResult, Ray},

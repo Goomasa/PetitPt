@@ -13,7 +13,7 @@ const PI_INV: f64 = 1. / PI;
 pub fn radiance(scene: &Scene, ray: Ray, rand: &mut XorRand) -> Color {
     let mut record = HitRecord::new();
     let mut now_ray = ray;
-    let mut roulette_prob = 1.0;
+    let mut roulette_prob;
     let mut pdf = 1.0;
     let mut orienting_normal;
     let mut throughput = Vec3::new(1.);

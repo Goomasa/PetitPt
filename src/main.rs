@@ -20,64 +20,72 @@ mod render;
 mod scene;
 
 fn example1() {
-    let plane: Object = Plane {
-        axis: Axis::Y,
-        pos: 0.,
-        bxdf: Bxdf::Lambertian,
-        color: Vec3(0.4, 0.4, 0.4),
-        id: 0,
-    };
+    let freshid = &mut FreshId::new();
 
-    let sphere1: Object = Sphere {
-        center: Vec3(0., 8., -5.),
-        radius: 7.,
-        color: Vec3(1., 1., 1.),
-        bxdf: Bxdf::Light,
-        id: 1,
-    };
+    let plane = Object::set_plane(Axis::Y, 0., Bxdf::Lambertian, Vec3(0.4, 0.4, 0.4), freshid);
 
-    let sphere2: Object = Sphere {
-        center: Vec3(10., 4., 2.),
-        radius: 4.,
-        color: Vec3(0.7, 0., 0.7),
-        bxdf: Bxdf::Specular,
-        id: 2,
-    };
+    let rect = Object::set_rect(
+        Axis::Z,
+        Vec3(-15., 0., -15.),
+        Vec3(15., 15., -15.),
+        Bxdf::Light,
+        Vec3(10., 10., 10.),
+        freshid,
+    );
 
-    let sphere3: Object = Sphere {
-        center: Vec3(0., 2., 6.),
-        radius: 2.,
-        color: Vec3(0.7, 0.7, 0.),
-        bxdf: Bxdf::Lambertian,
-        id: 3,
-    };
+    let sphere1 = Object::set_sphere(
+        Vec3(0., 7., -5.),
+        7.,
+        Bxdf::Lambertian,
+        Vec3(0.9, 0.3, 0.),
+        freshid,
+    );
 
-    let sphere4: Object = Sphere {
-        center: Vec3(-10., 3., 5.),
-        radius: 3.,
-        color: Vec3(0., 0.7, 0.7),
-        bxdf: Bxdf::Lambertian,
-        id: 4,
-    };
+    let sphere2 = Object::set_sphere(
+        Vec3(10., 4., 2.),
+        4.,
+        Bxdf::Specular,
+        Vec3(0.7, 0., 0.7),
+        freshid,
+    );
 
-    let sphere5: Object = Sphere {
-        center: Vec3(-4., 1., 12.),
-        radius: 1.,
-        color: Vec3(0.99, 0.99, 0.99),
-        bxdf: Bxdf::Dielectric { ior: 1.5 },
-        id: 5,
-    };
+    let sphere3 = Object::set_sphere(
+        Vec3(1., 2., 7.),
+        2.,
+        Bxdf::Lambertian,
+        Vec3(0.7, 0.7, 0.),
+        freshid,
+    );
 
-    let objects = vec![&plane, &sphere1, &sphere2, &sphere3, &sphere4, &sphere5];
+    let sphere4 = Object::set_sphere(
+        Vec3(-10., 3., 5.),
+        3.,
+        Bxdf::Lambertian,
+        Vec3(0., 0.7, 0.7),
+        freshid,
+    );
+
+    let sphere5 = Object::set_sphere(
+        Vec3(-4., 1., 12.),
+        1.,
+        Bxdf::Dielectric { ior: 1.5 },
+        Vec3(0.9, 0.9, 0.9),
+        freshid,
+    );
+
+    let objects = vec![
+        &plane, &rect, &sphere1, &sphere2, &sphere3, &sphere4, &sphere5,
+    ];
+
     let camera = LensModel::new(
         0.75,
-        400,
+        800,
         Vec3(0., 0., -1.).normalize(),
         Vec3(0., 3., 60.),
         40.,
         2.,
         30.,
-        23.5,
+        23.,
         60.,
         4,
         4,
@@ -145,6 +153,7 @@ fn example2() {
     let objects = vec![
         &plane, &rect, &sphere1, &sphere2, &sphere3, &sphere4, &sphere5,
     ];
+
     let camera = PinholeModel::new(
         Vec3(0., 5., 20.),
         0.75,
@@ -152,8 +161,85 @@ fn example2() {
         40.,
         Vec3(0., -0.1, -1.).normalize(),
         16.,
-        4,
-        4,
+        10,
+        10,
+    );
+
+    let scene = Scene::new(objects, Vec3::new(0.));
+
+    let _ = render(&camera, &scene);
+}
+
+pub fn cornel_box() {
+    let freshid = &mut FreshId::new();
+
+    let rect0 = Object::set_rect(
+        Axis::Y,
+        Vec3(-25., 0., 0.),
+        Vec3(25., 0., -30.),
+        Bxdf::Lambertian,
+        Vec3(1., 1., 1.),
+        freshid,
+    );
+    let rect1 = Object::set_rect(
+        Axis::Y,
+        Vec3(-25., 60., 0.),
+        Vec3(25., 60., -30.),
+        Bxdf::Lambertian,
+        Vec3(1., 1., 1.),
+        freshid,
+    );
+    let rect2 = Object::set_rect(
+        Axis::X,
+        Vec3(-25., 0., 0.),
+        Vec3(-25., 60., -30.),
+        Bxdf::Lambertian,
+        Vec3(1., 0.1, 0.1),
+        freshid,
+    );
+    let rect3 = Object::set_rect(
+        Axis::X,
+        Vec3(25., 0., 0.),
+        Vec3(25., 60., -30.),
+        Bxdf::Lambertian,
+        Vec3(0.1, 1., 0.1),
+        freshid,
+    );
+    let rect4 = Object::set_rect(
+        Axis::Z,
+        Vec3(-25., 0., -30.),
+        Vec3(25., 60., -30.),
+        Bxdf::Lambertian,
+        Vec3(1., 1., 1.),
+        freshid,
+    );
+    let rect5 = Object::set_rect(
+        Axis::Y,
+        Vec3(-5., 59.9, -10.),
+        Vec3(5., 59.9, -20.),
+        Bxdf::Light,
+        Vec3(7., 7., 7.),
+        freshid,
+    );
+
+    let sphere0 = Object::set_sphere(
+        Vec3(5., 5., -10.),
+        5.,
+        Bxdf::Lambertian,
+        Vec3(1., 0.2, 1.),
+        freshid,
+    );
+
+    let objects = vec![&rect0, &rect1, &rect2, &rect3, &rect4, &rect5, &sphere0];
+    let camera = PinholeModel::new(
+        Vec3(0., 30., 25.),
+        0.75,
+        600,
+        40.,
+        Vec3(0., 0., -1.).normalize(),
+        10.,
+        6,
+        6,
     );
 
     let scene = Scene::new(objects, Vec3::new(0.));
@@ -163,8 +249,9 @@ fn example2() {
 
 fn main() {
     let start = std::time::Instant::now();
-    //sample_scene1();
-    example2();
+    //example1();
+    //example2();
+    cornel_box();
     let end = start.elapsed();
     println!("{}.{:03}sec", end.as_secs(), end.subsec_nanos() / 1_000_000);
 }
