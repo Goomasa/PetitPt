@@ -5,6 +5,7 @@ use object::{
     Axis,
     Object::{self, Plane, Sphere},
 };
+use polygon::read_ply;
 use random::FreshId;
 use render::render;
 use scene::Scene;
@@ -13,6 +14,7 @@ mod camera;
 mod material;
 mod math;
 mod object;
+mod polygon;
 mod radiance;
 mod random;
 mod ray;
@@ -258,11 +260,59 @@ pub fn cornel_box() {
     let _ = render(&camera, &scene);
 }
 
+fn bunny() {
+    let freshid = &mut FreshId::new();
+
+    let plane = Object::set_plane(Axis::Y, 0., Bxdf::Lambertian, Vec3(0.4, 0.4, 0.4), freshid);
+
+    let rect = Object::set_rect(
+        Axis::Z,
+        Vec3(-20., 0., -15.),
+        Vec3(20., 30., -15.),
+        Bxdf::Light,
+        Vec3(5., 5., 5.),
+        freshid,
+    );
+
+    //using stanford-bunny
+    //Stanford Computer Graphics Laboratory
+    //http://graphics.stanford.edu/data/3Dscanrep/
+    let polygon = read_ply(
+        "assets/bun_zipper_res4.ply",
+        Vec3(0.8, 0.5, 0.8),
+        Bxdf::Lambertian,
+        100.,
+        Vec3(0., -3.5, 0.),
+        freshid,
+    );
+
+    let mut objects = vec![&rect, &plane];
+    for obj in polygon.iter() {
+        objects.push(obj);
+    }
+
+    let camera = PinholeModel::new(
+        Vec3(0., 5., 20.),
+        0.75,
+        400,
+        40.,
+        Vec3(0., -0.1, -1.).normalize(),
+        16.,
+        6,
+        6,
+    );
+
+    let scene = Scene::new(objects, Vec3::new(0.));
+
+    let _ = render(&camera, &scene);
+}
+
 fn main() {
     let start = std::time::Instant::now();
     //example1();
     //example2();
-    cornel_box();
+    //cornel_box();
+    bunny();
     let end = start.elapsed();
     println!("{}.{:03}sec", end.as_secs(), end.subsec_nanos() / 1_000_000);
 }

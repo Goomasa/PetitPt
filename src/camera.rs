@@ -79,7 +79,7 @@ impl LensModel {
         }
     }
 
-    pub fn sample_lens(&self, pixel_pos: Point3, rand: &mut XorRand) -> (f64, Point3) {
+    fn sample_lens(&self, pixel_pos: Point3, rand: &mut XorRand) -> (f64, Point3) {
         //return (coefficient=cos^2/l^2, sample_pos)
         let theta = 2.0 * PI * rand.next01();
         let r = rand.next01().sqrt() * self.lens_radius;
@@ -91,7 +91,7 @@ impl LensModel {
         (cos_theta * cos_theta / l_sq, lens_pos)
     }
 
-    pub fn first_dir(&self, pixel_pos: Point3, lens_pos: Point3) -> Vec3 {
+    fn first_dir(&self, pixel_pos: Point3, lens_pos: Point3) -> Vec3 {
         let plane_pos = (self.lens_center - pixel_pos) * (self.sensor_to_lens + self.lens_to_plane)
             / self.sensor_to_lens
             + pixel_pos;
