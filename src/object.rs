@@ -33,6 +33,16 @@ pub enum Object {
         color: Color,
         id: i32,
     },
+
+    Triangle {
+        p: Point3,
+        pq: Point3,
+        pr: Point3,
+        normal: Vec3,
+        bxdf: Bxdf,
+        color: Color,
+        id: i32,
+    },
 }
 
 impl Object {
@@ -83,6 +93,26 @@ impl Object {
             axis,
             min_p,
             max_p,
+            bxdf,
+            color,
+            id: freshid.gen_id(),
+        }
+    }
+
+    pub fn set_tri(
+        p: Point3,
+        q: Point3,
+        r: Point3,
+        bxdf: Bxdf,
+        color: Color,
+        freshid: &mut FreshId,
+    ) -> Object {
+        let normal = cross(q - p, r - p).normalize();
+        Object::Triangle {
+            p,
+            pq: q - p,
+            pr: r - p,
+            normal,
             bxdf,
             color,
             id: freshid.gen_id(),
@@ -140,6 +170,24 @@ impl Object {
                     record.obj_id = *id;
                 }
             }
+            Object::Triangle {
+                p,
+                pq,
+                pr,
+                normal,
+                bxdf,
+                color,
+                id,
+            } => {
+                if let Some((t, pos)) = hit_triangle(p, pq, pr, normal, ray, record.distance) {
+                    record.distance = t;
+                    record.pos = pos;
+                    record.normal = *normal;
+                    record.bxdf = *bxdf;
+                    record.color = *color;
+                    record.obj_id = *id;
+                }
+            }
         }
     }
 
@@ -147,7 +195,17 @@ impl Object {
         match self {
             Object::Sphere { bxdf, .. }
             | Object::Plane { bxdf, .. }
-            | Object::Rectangle { bxdf, .. } => *bxdf,
+            | Object::Rectangle { bxdf, .. }
+            | Object::Triangle { bxdf, .. } => *bxdf,
+        }
+    }
+
+    pub fn get_id(&self) -> i32 {
+        match self {
+            Object::Sphere { id, .. }
+            | Object::Plane { id, .. }
+            | Object::Rectangle { id, .. }
+            | Object::Triangle { id, .. } => *id,
         }
     }
 
@@ -162,6 +220,7 @@ impl Object {
                 Axis::Y => (max_p.0 - min_p.0) * (max_p.2 - min_p.2),
                 Axis::Z => (max_p.0 - min_p.0) * (max_p.1 - min_p.1),
             },
+            Object::Triangle { pq, pr, .. } => cross(*pq, *pr).length() / 2.,
         }
     }
 }
@@ -291,6 +350,37 @@ pub fn hit_rect(
     None
 }
 
+pub fn hit_triangle(
+    p: &Point3,
+    pq: &Point3,
+    pr: &Point3,
+    normal: &Vec3,
+    ray: &Ray,
+    max_dist: f64,
+) -> Option<(f64, Point3)> {
+    let n_d = dot(*normal, ray.dir);
+    if n_d == 0. {
+        return None;
+    }
+
+    let t = dot(*normal, *p - ray.org) / n_d;
+    if t > max_dist || t < 0. {
+        return None;
+    }
+    let pos = ray.org + ray.dir * t;
+    let p_pos = pos - *p;
+    let u = dot(cross(*pr, p_pos), *normal) / dot(cross(*pr, *pq), *normal);
+    let v = dot(cross(*pq, p_pos), *normal) / dot(cross(*pq, *pr), *normal);
+
+    if u + v > 1. || u + v < 0. {
+        return None;
+    } else if u < 0. || u > 1. || v < 0. || v > 1. {
+        return None;
+    }
+
+    Some((t, pos))
+}
+
 pub fn sample_sphere(org: Point3, center: &Point3, radius: f64, rand: &mut XorRand) -> (f64, Vec3) {
     let pc = *center - org;
     let cos_mu = (1. - (radius * radius / pc.length_sq())).sqrt();
@@ -353,14 +443,43 @@ pub fn sample_rect(
     (l_sq / (area * cos_theta), dir)
 }
 
+pub fn sample_triangle(
+    org: Point3,
+    p: &Point3,
+    pq: &Point3,
+    pr: &Point3,
+    normal: &Vec3,
+    area: f64,
+    rand: &mut XorRand,
+) -> (f64, Vec3) {
+    let mut r1 = rand.next01();
+    let mut r2 = rand.next01();
+    if r1 + r2 > 1. {
+        r1 = 1. - r1;
+        r2 = 1. - r2;
+    }
+    let sample_pos = *p + *pq * r1 + *pr * r2;
+    let mut dir = sample_pos - org;
+
+    let l_sq = dir.length_sq();
+    dir = dir.normalize();
+    let cos_theta = dot(dir, *normal).abs();
+    (l_sq / (cos_theta * area), dir)
+}
+
 pub fn sample_sphere_pdf(org: Point3, center: &Point3, radius: f64) -> f64 {
     let cos_mu = (1. - (radius * radius / (*center - org).length_sq())).sqrt();
     1. / (2. * PI * (1. - cos_mu))
 }
 
 pub fn sample_rect_pdf(org: Point3, pos: Point3, obj: &Object, normal: Vec3) -> f64 {
-    let area = obj.get_area();
     let l_sq = (pos - org).length_sq();
     let cos_theta = dot((pos - org).normalize(), normal).abs();
-    l_sq / (area * cos_theta)
+    l_sq / (obj.get_area() * cos_theta)
+}
+
+pub fn sample_tri_pdf(org: Point3, pos: Point3, obj: &Object, normal: Vec3) -> f64 {
+    let l_sq = (pos - org).length_sq();
+    let cos_theta = dot((pos - org).normalize(), normal).abs();
+    l_sq / (obj.get_area() * cos_theta)
 }

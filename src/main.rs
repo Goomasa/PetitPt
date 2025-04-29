@@ -81,12 +81,12 @@ fn example1() {
         0.75,
         800,
         Vec3(0., 0., -1.).normalize(),
-        Vec3(0., 3., 60.),
+        Vec3(0., 3., 50.),
         40.,
         2.,
         30.,
         23.,
-        60.,
+        50.,
         4,
         4,
     );
@@ -161,8 +161,8 @@ fn example2() {
         40.,
         Vec3(0., -0.1, -1.).normalize(),
         16.,
-        10,
-        10,
+        6,
+        6,
     );
 
     let scene = Scene::new(objects, Vec3::new(0.));
@@ -176,15 +176,15 @@ pub fn cornel_box() {
     let rect0 = Object::set_rect(
         Axis::Y,
         Vec3(-25., 0., 0.),
-        Vec3(25., 0., -30.),
+        Vec3(25., 0., -50.),
         Bxdf::Lambertian,
         Vec3(1., 1., 1.),
         freshid,
     );
     let rect1 = Object::set_rect(
         Axis::Y,
-        Vec3(-25., 60., 0.),
-        Vec3(25., 60., -30.),
+        Vec3(-25., 50., 0.),
+        Vec3(25., 50., -50.),
         Bxdf::Lambertian,
         Vec3(1., 1., 1.),
         freshid,
@@ -192,7 +192,7 @@ pub fn cornel_box() {
     let rect2 = Object::set_rect(
         Axis::X,
         Vec3(-25., 0., 0.),
-        Vec3(-25., 60., -30.),
+        Vec3(-25., 50., -50.),
         Bxdf::Lambertian,
         Vec3(1., 0.1, 0.1),
         freshid,
@@ -200,25 +200,25 @@ pub fn cornel_box() {
     let rect3 = Object::set_rect(
         Axis::X,
         Vec3(25., 0., 0.),
-        Vec3(25., 60., -30.),
+        Vec3(25., 50., -50.),
         Bxdf::Lambertian,
         Vec3(0.1, 1., 0.1),
         freshid,
     );
     let rect4 = Object::set_rect(
         Axis::Z,
-        Vec3(-25., 0., -30.),
-        Vec3(25., 60., -30.),
+        Vec3(-25., 0., -50.),
+        Vec3(25., 50., -50.),
         Bxdf::Lambertian,
         Vec3(1., 1., 1.),
         freshid,
     );
     let rect5 = Object::set_rect(
         Axis::Y,
-        Vec3(-5., 59.9, -10.),
-        Vec3(5., 59.9, -20.),
+        Vec3(-5., 49.99, -20.),
+        Vec3(5., 49.99, -30.),
         Bxdf::Light,
-        Vec3(7., 7., 7.),
+        Vec3(25., 25., 25.),
         freshid,
     );
 
@@ -230,16 +230,27 @@ pub fn cornel_box() {
         freshid,
     );
 
-    let objects = vec![&rect0, &rect1, &rect2, &rect3, &rect4, &rect5, &sphere0];
+    let tri0 = Object::set_tri(
+        Vec3(-20., 0., -5.),
+        Vec3(-15., 20., -10.),
+        Vec3(-8., 0., -25.),
+        Bxdf::Specular,
+        Vec3(0.3, 0.3, 1.),
+        freshid,
+    );
+
+    let objects = vec![
+        &rect0, &rect1, &rect2, &rect3, &rect4, &rect5, &sphere0, &tri0,
+    ];
     let camera = PinholeModel::new(
-        Vec3(0., 30., 25.),
+        Vec3(0., 25., 55.),
         0.75,
-        600,
+        800,
         40.,
         Vec3(0., 0., -1.).normalize(),
-        10.,
-        6,
-        6,
+        30.,
+        12,
+        12,
     );
 
     let scene = Scene::new(objects, Vec3::new(0.));
