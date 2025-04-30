@@ -2,7 +2,7 @@ use crate::{
     material::{reflection_dir, refraction_dir, sample_lambert, sample_lambert_pdf, Bxdf},
     math::{dot, max_elm, multiply, Color, Vec3, PI},
     random::XorRand,
-    ray::{HitRecord, NeeResult, Ray},
+    ray::{HitRecord, Ray},
     scene::Scene,
 };
 
@@ -25,7 +25,7 @@ pub fn radiance(scene: &Scene, ray: Ray, rand: &mut XorRand) -> Color {
     for time in 0.. {
         prev_record = record;
         record = HitRecord::new();
-        if !scene.intersect(&now_ray, &mut record) {
+        if !scene.intersect(&now_ray, &mut record, &scene.bvh_tree[0]) {
             rad = rad + multiply(throughput, scene.background) / pdf;
             break;
         }
@@ -79,7 +79,6 @@ pub fn radiance(scene: &Scene, ray: Ray, rand: &mut XorRand) -> Color {
 
                 throughput = multiply(throughput, record.color);
                 nee_result = scene.nee(org, rand);
-
                 if nee_result.pdf != 0. {
                     let dir_cosine = dot(orienting_normal, nee_result.dir).abs();
                     let mis_weight = 1. / (nee_result.pdf + dir_cosine * PI_INV);
@@ -115,6 +114,5 @@ pub fn radiance(scene: &Scene, ray: Ray, rand: &mut XorRand) -> Color {
             }
         }
     }
-
     rad
 }

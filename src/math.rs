@@ -2,7 +2,7 @@ use std::fmt::Display;
 use std::ops::{Add, Div, Mul, Neg, Sub};
 
 pub const PI: f64 = 3.14159265358979323846;
-pub const INF: f64 = 1e128;
+pub const INF: f64 = 1e15;
 pub const EPS: f64 = 1e-6;
 
 #[derive(Debug, Clone, Copy)]

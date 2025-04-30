@@ -1,3 +1,4 @@
+use bvh::check_bvh;
 use camera::{LensModel, PinholeModel};
 use material::Bxdf;
 use math::Vec3;
@@ -10,6 +11,8 @@ use random::FreshId;
 use render::render;
 use scene::Scene;
 
+mod aabb;
+mod bvh;
 mod camera;
 mod material;
 mod math;
@@ -251,8 +254,8 @@ pub fn cornel_box() {
         40.,
         Vec3(0., 0., -1.).normalize(),
         30.,
-        12,
-        12,
+        4,
+        4,
     );
 
     let scene = Scene::new(objects, Vec3::new(0.));
@@ -298,12 +301,12 @@ fn bunny() {
         40.,
         Vec3(0., -0.1, -1.).normalize(),
         16.,
-        6,
-        6,
+        4,
+        4,
     );
 
     let scene = Scene::new(objects, Vec3::new(0.));
-
+    //check_bvh(&scene.bvh_tree);
     let _ = render(&camera, &scene);
 }
 

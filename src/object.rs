@@ -1,7 +1,9 @@
+use crate::aabb::AABB;
 use crate::random::{FreshId, XorRand};
 use crate::ray::*;
 use crate::{material::Bxdf, math::*};
 
+#[derive(Clone, Copy)]
 pub enum Axis {
     X,
     Y,
@@ -15,6 +17,7 @@ pub enum Object {
         bxdf: Bxdf,
         color: Color,
         id: i32,
+        bbox: AABB,
     },
 
     Plane {
@@ -23,6 +26,7 @@ pub enum Object {
         bxdf: Bxdf,
         color: Color,
         id: i32,
+        bbox: AABB,
     },
 
     Rectangle {
@@ -32,6 +36,7 @@ pub enum Object {
         bxdf: Bxdf,
         color: Color,
         id: i32,
+        bbox: AABB,
     },
 
     Triangle {
@@ -42,6 +47,7 @@ pub enum Object {
         bxdf: Bxdf,
         color: Color,
         id: i32,
+        bbox: AABB,
     },
 }
 
@@ -59,6 +65,10 @@ impl Object {
             bxdf,
             color,
             id: freshid.gen_id(),
+            bbox: AABB {
+                min_p: center - Vec3::new(radius),
+                max_p: center + Vec3::new(radius),
+            },
         }
     }
 
@@ -69,12 +79,27 @@ impl Object {
         color: Color,
         freshid: &mut FreshId,
     ) -> Object {
+        let bbox = match axis {
+            Axis::X => AABB {
+                min_p: Vec3(pos - 0.01, -INF, -INF),
+                max_p: Vec3(pos + 0.01, INF, INF),
+            },
+            Axis::Y => AABB {
+                min_p: Vec3(-INF, pos - 0.01, -INF),
+                max_p: Vec3(INF, pos + 0.01, INF),
+            },
+            Axis::Z => AABB {
+                min_p: Vec3(-INF, -INF, pos - 0.01),
+                max_p: Vec3(INF, INF, pos + 0.01),
+            },
+        };
         Object::Plane {
             axis,
             pos,
             bxdf,
             color,
             id: freshid.gen_id(),
+            bbox,
         }
     }
 
@@ -96,6 +121,7 @@ impl Object {
             bxdf,
             color,
             id: freshid.gen_id(),
+            bbox: AABB { min_p, max_p }.rev_aabb(),
         }
     }
 
@@ -108,6 +134,16 @@ impl Object {
         freshid: &mut FreshId,
     ) -> Object {
         let normal = cross(q - p, r - p).normalize();
+        let min_p = Vec3(
+            fmin(p.0, fmin(q.0, r.0)),
+            fmin(p.1, fmin(q.1, r.1)),
+            fmin(p.2, fmin(q.2, r.2)),
+        );
+        let max_p = Vec3(
+            fmax(p.0, fmax(q.0, r.0)),
+            fmax(p.1, fmax(q.1, r.1)),
+            fmax(p.2, fmax(q.2, r.2)),
+        );
         Object::Triangle {
             p,
             pq: q - p,
@@ -116,6 +152,7 @@ impl Object {
             bxdf,
             color,
             id: freshid.gen_id(),
+            bbox: AABB { min_p, max_p }.rev_aabb(),
         }
     }
 
@@ -127,6 +164,7 @@ impl Object {
                 bxdf,
                 color,
                 id,
+                ..
             } => {
                 if let Some((t, normal)) = hit_sphere(center, radius, ray, record.distance) {
                     record.distance = t;
@@ -143,6 +181,7 @@ impl Object {
                 bxdf,
                 color,
                 id,
+                ..
             } => {
                 if let Some((t, normal)) = hit_plane(axis, pos, ray, record.distance) {
                     record.distance = t;
@@ -160,6 +199,7 @@ impl Object {
                 bxdf,
                 color,
                 id,
+                ..
             } => {
                 if let Some((t, normal)) = hit_rect(axis, max_p, min_p, ray, record.distance) {
                     record.distance = t;
@@ -178,6 +218,7 @@ impl Object {
                 bxdf,
                 color,
                 id,
+                ..
             } => {
                 if let Some((t, pos)) = hit_triangle(p, pq, pr, normal, ray, record.distance) {
                     record.distance = t;
@@ -209,6 +250,15 @@ impl Object {
         }
     }
 
+    pub fn get_bbox(&self) -> AABB {
+        match self {
+            Object::Sphere { bbox, .. }
+            | Object::Plane { bbox, .. }
+            | Object::Rectangle { bbox, .. }
+            | Object::Triangle { bbox, .. } => *bbox,
+        }
+    }
+
     pub fn get_area(&self) -> f64 {
         match self {
             Object::Sphere { radius, .. } => 2. * PI * radius,
@@ -222,6 +272,11 @@ impl Object {
             },
             Object::Triangle { pq, pr, .. } => cross(*pq, *pr).length() / 2.,
         }
+    }
+
+    pub fn get_center(&self) -> Point3 {
+        let bbox = self.get_bbox();
+        (bbox.min_p + bbox.max_p) / 2.
     }
 }
 
@@ -364,7 +419,7 @@ pub fn hit_triangle(
     }
 
     let t = dot(*normal, *p - ray.org) / n_d;
-    if t > max_dist || t < 0. {
+    if t > max_dist || t <= 0. {
         return None;
     }
     let pos = ray.org + ray.dir * t;
@@ -372,9 +427,7 @@ pub fn hit_triangle(
     let u = dot(cross(*pr, p_pos), *normal) / dot(cross(*pr, *pq), *normal);
     let v = dot(cross(*pq, p_pos), *normal) / dot(cross(*pq, *pr), *normal);
 
-    if u + v > 1. || u + v < 0. {
-        return None;
-    } else if u < 0. || u > 1. || v < 0. || v > 1. {
+    if u + v > 1. || u < 0. || v < 0. {
         return None;
     }
 

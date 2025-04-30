@@ -1,4 +1,5 @@
 use crate::{
+    bvh::{construct_bvh, BvhNode, BvhTree},
     math::{Color, Point3},
     object::{
         sample_rect, sample_rect_pdf, sample_sphere, sample_sphere_pdf, sample_tri_pdf,
@@ -12,26 +13,39 @@ pub struct Scene<'a> {
     pub objects: Vec<&'a Object>,
     pub background: Color,
     pub lights: Vec<&'a Object>,
+    pub bvh_tree: BvhTree,
 }
 
 impl<'a> Scene<'a> {
-    pub fn new(objs: Vec<&'a Object>, back: Color) -> Self {
+    pub fn new(mut objs: Vec<&'a Object>, back: Color) -> Self {
         let lights = objs
             .clone()
             .into_iter()
             .filter(|obj| obj.get_bxdf().is_light())
             .collect();
 
+        objs.sort_by(|o1, o2| o1.get_id().cmp(&o2.get_id()));
+        let bvh_tree = construct_bvh(&objs);
+
         Scene {
             objects: objs,
             background: back,
-            lights: lights,
+            lights,
+            bvh_tree,
         }
     }
 
-    pub fn intersect(&self, ray: &Ray, record: &mut HitRecord) -> bool {
-        for obj in self.objects.iter() {
-            let _ = obj.hit(ray, record);
+    pub fn intersect(&self, ray: &Ray, record: &mut HitRecord, node: &BvhNode) -> bool {
+        let (l, r) = node.children;
+        if node.bbox.hit(ray, record.distance) {
+            if l == -1 {
+                for i in node.elements.iter() {
+                    let _ = self.objects[*i].hit(ray, record);
+                }
+            } else {
+                let _ = self.intersect(ray, record, &self.bvh_tree[l as usize]);
+                let _ = self.intersect(ray, record, &self.bvh_tree[r as usize]);
+            }
         }
         record.obj_id != -1
     }
@@ -51,7 +65,7 @@ impl<'a> Scene<'a> {
                 } => sample_triangle(org, p, pq, pr, normal, obj.get_area(), rand),
             };
 
-            let _ = self.intersect(&Ray { org, dir }, &mut record);
+            let _ = self.intersect(&Ray { org, dir }, &mut record, &self.bvh_tree[0]);
             if record.obj_id != obj.get_id() {
                 continue;
             }
