@@ -1,14 +1,14 @@
-#PetitPt
+# PetitPt
 
 A simple pathtracer written in Rust
 
-##using crates
+## using crates
 
 ・bmp: https://github.com/sondrele/rust-bmp
 
 ・ply_rs: https://github.com/Fluci/ply-rs
 
-##using models
+## using models
 
 ・Stanford bunny: 
 
