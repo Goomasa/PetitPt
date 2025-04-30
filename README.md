@@ -8,6 +8,10 @@ A simple pathtracer written in Rust
 
 ・ply_rs: https://github.com/Fluci/ply-rs
 
+・linked_hash_map: https://github.com/contain-rs/linked-hash-map
+
+・rayon: https://github.com/rayon-rs/rayon
+
 ## using models
 
 ・Stanford bunny: 

@@ -3,7 +3,7 @@ use crate::{
     random::XorRand,
 };
 
-pub trait Camara {
+pub trait Camara: Send + Sync {
     fn get_pixel(&self) -> (u32, u32);
     fn get_sample(&self) -> (u32, u32);
     fn get_coeff(&self) -> f64;
