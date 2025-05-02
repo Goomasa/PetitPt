@@ -2,7 +2,7 @@
 
 A simple pathtracer written in Rust
 
-## using crates
+## Using crates
 
 ・bmp: https://github.com/sondrele/rust-bmp
 
@@ -12,10 +12,24 @@ A simple pathtracer written in Rust
 
 ・rayon: https://github.com/rayon-rs/rayon
 
-## using models
+## Gallery
 
-・Stanford bunny: 
+![Image1](images/petitpt_spheres.jpg)
 
-  Stanford Computer Graphics Laboratory
-  
-  http://graphics.stanford.edu/data/3Dscanrep/
+![Image2](images/petitpt_dof.jpg)
+
+![Image3](images/petitpt_bunny.jpg)
+
+Stanford bunny: 
+
+> © Copyright Stanford University – Computer Graphics Laboratory
+
+> [https://graphics.stanford.edu/data/3Dscanrep/]http://graphics.stanford.edu/data/3Dscanrep/
+
+## References
+
+・Henric Wann Jensen(著), 苗村 健(訳) "フォトンマッピングー実写に迫るコンピュータグラフィックス", 2002, オーム社
+・https://rayspace.xyz/CG/
+・https://kagamin.net/hole/edubpt/index.htm
+・Ingo Wald, Solomon Boulos, and Peter Shirley, Ray tracing deformable scenes using dynamic bounding volume hierarchies
+, ACM Transactions on Graphics, Volume 26, Issue 1

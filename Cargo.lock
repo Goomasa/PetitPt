@@ -3,16 +3,6 @@
 version = 4
 
 [[package]]
-name = "PetitPt"
-version = "0.1.0"
-dependencies = [
- "bmp",
- "linked-hash-map",
- "ply-rs",
- "rayon",
-]
-
-[[package]]
 name = "bitflags"
 version = "2.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -212,6 +202,16 @@ name = "peg-runtime"
 version = "0.6.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9555b1514d2d99d78150d3c799d4c357a3e2c2a8062cd108e93a06d9057629c5"
+
+[[package]]
+name = "petit_pt"
+version = "0.1.0"
+dependencies = [
+ "bmp",
+ "linked-hash-map",
+ "ply-rs",
+ "rayon",
+]
 
 [[package]]
 name = "ply-rs"

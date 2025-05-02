@@ -1,4 +1,3 @@
-use bvh::check_bvh;
 use camera::{LensModel, PinholeModel};
 use material::Bxdf;
 use math::Vec3;
@@ -27,16 +26,7 @@ mod scene;
 fn example1() {
     let freshid = &mut FreshId::new();
 
-    let plane = Object::set_plane(Axis::Y, 0., Bxdf::Lambertian, Vec3(0.4, 0.4, 0.4), freshid);
-
-    let rect = Object::set_rect(
-        Axis::Z,
-        Vec3(-15., 0., -15.),
-        Vec3(15., 15., -15.),
-        Bxdf::Light,
-        Vec3(10., 10., 10.),
-        freshid,
-    );
+    let plane = Object::set_plane(Axis::Y, 0., Bxdf::Lambertian, Vec3(0.3, 0.3, 0.3), freshid);
 
     let sphere1 = Object::set_sphere(
         Vec3(0., 7., -5.),
@@ -78,25 +68,23 @@ fn example1() {
         freshid,
     );
 
-    let objects = vec![
-        &plane, &rect, &sphere1, &sphere2, &sphere3, &sphere4, &sphere5,
-    ];
+    let objects = vec![&plane, &sphere1, &sphere2, &sphere3, &sphere4, &sphere5];
 
     let camera = LensModel::new(
         0.75,
         800,
         Vec3(0., 0., -1.).normalize(),
-        Vec3(0., 3., 50.),
+        Vec3(0., 3., 86.),
         40.,
         2.,
-        30.,
-        23.,
-        50.,
+        40.,
+        40.,
+        150.,
         4,
         4,
     );
 
-    let scene = Scene::new(objects, Vec3::new(0.));
+    let scene = Scene::new(objects, Vec3::new(0.9));
 
     let _ = render(&camera, &scene);
 }
@@ -162,12 +150,12 @@ fn example2() {
     let camera = PinholeModel::new(
         Vec3(0., 5., 20.),
         0.75,
-        600,
+        800,
         40.,
         Vec3(0., -0.1, -1.).normalize(),
         16.,
-        6,
-        6,
+        4,
+        4,
     );
 
     let scene = Scene::new(objects, Vec3::new(0.));
@@ -227,26 +215,19 @@ pub fn cornel_box() {
         freshid,
     );
 
-    let sphere0 = Object::set_sphere(
-        Vec3(5., 5., -10.),
-        5.,
+    //using stanford-bunny
+    //Stanford Computer Graphics Laboratory
+    //http://graphics.stanford.edu/data/3Dscanrep/
+    let polygon = read_ply(
+        "assets/bun_zipper_res4.ply",
+        Vec3(0.1, 0.1, 1.),
         Bxdf::Lambertian,
-        Vec3(1., 0.2, 1.),
+        200.,
+        Vec3(5., -7.5, -20.),
         freshid,
     );
 
-    let tri0 = Object::set_tri(
-        Vec3(-20., 0., -5.),
-        Vec3(-15., 20., -10.),
-        Vec3(-8., 0., -25.),
-        Bxdf::Specular,
-        Vec3(0.3, 0.3, 1.),
-        freshid,
-    );
-
-    let objects = vec![
-        &rect0, &rect1, &rect2, &rect3, &rect4, &rect5, &sphere0, &tri0,
-    ];
+    let mut objects = vec![&rect0, &rect1, &rect2, &rect3, &rect4, &rect5];
     let camera = PinholeModel::new(
         Vec3(0., 25., 55.),
         0.75,
@@ -258,64 +239,20 @@ pub fn cornel_box() {
         4,
     );
 
-    let scene = Scene::new(objects, Vec3::new(0.));
-
-    let _ = render(&camera, &scene);
-}
-
-fn bunny() {
-    let freshid = &mut FreshId::new();
-
-    let plane = Object::set_plane(Axis::Y, 0., Bxdf::Lambertian, Vec3(0.4, 0.4, 0.4), freshid);
-
-    let rect = Object::set_rect(
-        Axis::Z,
-        Vec3(-20., 0., -15.),
-        Vec3(20., 30., -15.),
-        Bxdf::Light,
-        Vec3(5., 5., 5.),
-        freshid,
-    );
-
-    //using stanford-bunny
-    //Stanford Computer Graphics Laboratory
-    //http://graphics.stanford.edu/data/3Dscanrep/
-    let polygon = read_ply(
-        "assets/bun_zipper_res4.ply",
-        Vec3(0.8, 0.5, 0.8),
-        Bxdf::Lambertian,
-        100.,
-        Vec3(0., -3.5, 0.),
-        freshid,
-    );
-
-    let mut objects = vec![&rect, &plane];
     for obj in polygon.iter() {
         objects.push(obj);
     }
 
-    let camera = PinholeModel::new(
-        Vec3(0., 5., 20.),
-        0.75,
-        400,
-        40.,
-        Vec3(0., -0.1, -1.).normalize(),
-        16.,
-        4,
-        4,
-    );
-
     let scene = Scene::new(objects, Vec3::new(0.));
-    //check_bvh(&scene.bvh_tree);
+
     let _ = render(&camera, &scene);
 }
 
 fn main() {
     let start = std::time::Instant::now();
-    //example1();
+    example1();
     //example2();
     //cornel_box();
-    bunny();
     let end = start.elapsed();
     println!("{}.{:03}sec", end.as_secs(), end.subsec_nanos() / 1_000_000);
 }
