@@ -36,3 +36,5 @@ Stanford bunny:
 
 ・Ingo Wald, Solomon Boulos, and Peter Shirley, Ray tracing deformable scenes using dynamic bounding volume hierarchies
 , ACM Transactions on Graphics, Volume 26, Issue 1
+
+・https://qiita.com/omochi64/items/9336f57118ba918f82ec
