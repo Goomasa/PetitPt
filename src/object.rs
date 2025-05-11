@@ -20,15 +20,6 @@ pub enum Object {
         bbox: AABB,
     },
 
-    Plane {
-        axis: Axis,
-        pos: f64,
-        bxdf: Bxdf,
-        color: Color,
-        id: i32,
-        bbox: AABB,
-    },
-
     Rectangle {
         axis: Axis,
         min_p: Point3,
@@ -69,37 +60,6 @@ impl Object {
                 min_p: center - Vec3::new(radius),
                 max_p: center + Vec3::new(radius),
             },
-        }
-    }
-
-    pub fn set_plane(
-        axis: Axis,
-        pos: f64,
-        bxdf: Bxdf,
-        color: Color,
-        freshid: &mut FreshId,
-    ) -> Object {
-        let bbox = match axis {
-            Axis::X => AABB {
-                min_p: Vec3(pos - 0.01, -INF, -INF),
-                max_p: Vec3(pos + 0.01, INF, INF),
-            },
-            Axis::Y => AABB {
-                min_p: Vec3(-INF, pos - 0.01, -INF),
-                max_p: Vec3(INF, pos + 0.01, INF),
-            },
-            Axis::Z => AABB {
-                min_p: Vec3(-INF, -INF, pos - 0.01),
-                max_p: Vec3(INF, INF, pos + 0.01),
-            },
-        };
-        Object::Plane {
-            axis,
-            pos,
-            bxdf,
-            color,
-            id: freshid.gen_id(),
-            bbox,
         }
     }
 
@@ -175,23 +135,6 @@ impl Object {
                     record.obj_id = *id;
                 }
             }
-            Object::Plane {
-                axis,
-                pos,
-                bxdf,
-                color,
-                id,
-                ..
-            } => {
-                if let Some((t, normal)) = hit_plane(axis, pos, ray, record.distance) {
-                    record.distance = t;
-                    record.pos = ray.org + ray.dir * t;
-                    record.normal = normal;
-                    record.bxdf = *bxdf;
-                    record.color = *color;
-                    record.obj_id = *id;
-                }
-            }
             Object::Rectangle {
                 axis,
                 min_p,
@@ -235,7 +178,6 @@ impl Object {
     pub fn get_bxdf(&self) -> Bxdf {
         match self {
             Object::Sphere { bxdf, .. }
-            | Object::Plane { bxdf, .. }
             | Object::Rectangle { bxdf, .. }
             | Object::Triangle { bxdf, .. } => *bxdf,
         }
@@ -244,7 +186,6 @@ impl Object {
     pub fn get_id(&self) -> i32 {
         match self {
             Object::Sphere { id, .. }
-            | Object::Plane { id, .. }
             | Object::Rectangle { id, .. }
             | Object::Triangle { id, .. } => *id,
         }
@@ -253,7 +194,6 @@ impl Object {
     pub fn get_bbox(&self) -> AABB {
         match self {
             Object::Sphere { bbox, .. }
-            | Object::Plane { bbox, .. }
             | Object::Rectangle { bbox, .. }
             | Object::Triangle { bbox, .. } => *bbox,
         }
@@ -262,7 +202,6 @@ impl Object {
     pub fn get_area(&self) -> f64 {
         match self {
             Object::Sphere { radius, .. } => 2. * PI * radius,
-            Object::Plane { .. } => INF,
             Object::Rectangle {
                 axis, min_p, max_p, ..
             } => match axis {

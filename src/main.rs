@@ -1,9 +1,9 @@
-use camera::{LensModel, PinholeModel};
+use camera::{HexLensModel, LensModel, PinholeModel};
 use material::Bxdf;
 use math::Vec3;
 use object::{
     Axis,
-    Object::{self, Plane, Sphere},
+    Object::{self, Sphere},
 };
 use polygon::read_ply;
 use random::FreshId;
@@ -26,7 +26,14 @@ mod scene;
 fn example1() {
     let freshid = &mut FreshId::new();
 
-    let plane = Object::set_plane(Axis::Y, 0., Bxdf::Lambertian, Vec3(0.3, 0.3, 0.3), freshid);
+    let plane = Object::set_rect(
+        Axis::Y,
+        Vec3(-100., 0., -100.),
+        Vec3(100., 0., 100.),
+        Bxdf::Lambertian,
+        Vec3(0.3, 0.3, 0.3),
+        freshid,
+    );
 
     let sphere1 = Object::set_sphere(
         Vec3(0., 7., -5.),
@@ -70,9 +77,9 @@ fn example1() {
 
     let objects = vec![&plane, &sphere1, &sphere2, &sphere3, &sphere4, &sphere5];
 
-    let camera = LensModel::new(
-        0.75,
+    let camera = HexLensModel::new(
         800,
+        450,
         Vec3(0., 0., -1.).normalize(),
         Vec3(0., 3., 86.),
         40.,
@@ -80,8 +87,8 @@ fn example1() {
         40.,
         40.,
         150.,
-        4,
-        4,
+        8,
+        8,
     );
 
     let scene = Scene::new(objects, Vec3::new(0.9));
@@ -92,7 +99,14 @@ fn example1() {
 fn example2() {
     let freshid = &mut FreshId::new();
 
-    let plane = Object::set_plane(Axis::Y, 0., Bxdf::Lambertian, Vec3(0.4, 0.4, 0.4), freshid);
+    let plane = Object::set_rect(
+        Axis::Y,
+        Vec3(-100., 0., -100.),
+        Vec3(100., 0., 100.),
+        Bxdf::Lambertian,
+        Vec3(0.3, 0.3, 0.3),
+        freshid,
+    );
 
     let rect = Object::set_rect(
         Axis::Z,
@@ -149,8 +163,8 @@ fn example2() {
 
     let camera = PinholeModel::new(
         Vec3(0., 5., 20.),
-        0.75,
         800,
+        450,
         40.,
         Vec3(0., -0.1, -1.).normalize(),
         16.,
@@ -230,8 +244,8 @@ pub fn cornel_box() {
     let mut objects = vec![&rect0, &rect1, &rect2, &rect3, &rect4, &rect5];
     let camera = PinholeModel::new(
         Vec3(0., 25., 55.),
-        0.75,
         800,
+        600,
         40.,
         Vec3(0., 0., -1.).normalize(),
         30.,

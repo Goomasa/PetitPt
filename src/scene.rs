@@ -56,7 +56,6 @@ impl<'a> Scene<'a> {
         for obj in self.lights.iter() {
             let (pdf, dir) = match obj {
                 Object::Sphere { center, radius, .. } => sample_sphere(org, center, *radius, rand),
-                Object::Plane { .. } => continue,
                 Object::Rectangle {
                     axis, min_p, max_p, ..
                 } => sample_rect(org, axis, max_p, min_p, rand),
@@ -81,7 +80,6 @@ impl<'a> Scene<'a> {
         let obj = self.objects[record.obj_id as usize];
         match obj {
             Object::Sphere { center, radius, .. } => sample_sphere_pdf(org, center, *radius),
-            Object::Plane { .. } => 0.,
             Object::Rectangle { .. } => sample_rect_pdf(org, record.pos, obj, record.normal),
             Object::Triangle { .. } => sample_tri_pdf(org, record.pos, obj, record.normal),
         }

@@ -17,6 +17,15 @@ impl XorRand {
         self.x = x;
         (x as f64) / (std::u32::MAX as f64)
     }
+
+    pub fn nexti(&mut self) -> u32 {
+        let mut x = self.x;
+        x = x ^ (x << 13);
+        x = x ^ (x >> 7);
+        x = x ^ (x << 17);
+        self.x = x;
+        x
+    }
 }
 
 pub struct FreshId {
