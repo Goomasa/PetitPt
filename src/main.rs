@@ -1,10 +1,7 @@
 use camera::{HexLensModel, LensModel, PinholeModel};
 use material::Bxdf;
 use math::Vec3;
-use object::{
-    Axis,
-    Object::{self, Sphere},
-};
+use object::{Axis, Object};
 use polygon::read_ply;
 use random::FreshId;
 use render::render;
@@ -264,8 +261,8 @@ pub fn cornel_box() {
 
 fn main() {
     let start = std::time::Instant::now();
-    example1();
-    //example2();
+    //example1();
+    example2();
     //cornel_box();
     let end = start.elapsed();
     println!("{}.{:03}sec", end.as_secs(), end.subsec_nanos() / 1_000_000);

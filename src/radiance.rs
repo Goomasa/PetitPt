@@ -20,7 +20,6 @@ pub fn radiance(scene: &Scene, ray: Ray, rand: &mut XorRand) -> Color {
     let mut rad = Vec3::new(0.);
 
     let mut prev_record;
-    let mut nee_result;
 
     for time in 0.. {
         prev_record = record;
@@ -78,7 +77,7 @@ pub fn radiance(scene: &Scene, ray: Ray, rand: &mut XorRand) -> Color {
                 };
 
                 throughput = multiply(throughput, record.color);
-                nee_result = scene.nee(org, rand);
+                let nee_result = scene.nee(org, rand);
                 if nee_result.pdf != 0. {
                     let dir_cosine = dot(orienting_normal, nee_result.dir).abs();
                     let mis_weight = 1. / (nee_result.pdf + dir_cosine * PI_INV);

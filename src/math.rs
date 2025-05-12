@@ -1,4 +1,3 @@
-use std::fmt::Display;
 use std::ops::{Add, Div, Mul, Neg, Sub};
 
 pub const PI: f64 = 3.14159265358979323846;
@@ -92,18 +91,6 @@ pub fn max_elm(v: &Vec3) -> f64 {
     max
 }
 
-pub fn min_elm(v: &Vec3) -> f64 {
-    let mut min = v.0;
-
-    if min > v.1 {
-        min = v.1;
-    }
-    if min > v.2 {
-        min = v.2;
-    }
-    min
-}
-
 pub fn fmax(a: f64, b: f64) -> f64 {
     if a > b {
         a
@@ -136,10 +123,4 @@ pub fn gamma_rev(v: Color) -> (u32, u32, u32) {
     let g = (v.1.clamp(0., 1.).powf(1. / 2.2) * 255.) as u32;
     let b = (v.2.clamp(0., 1.).powf(1. / 2.2) * 255.) as u32;
     (r, g, b)
-}
-
-impl Display for Vec3 {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "({}, {}, {})", self.0, self.1, self.2)
-    }
 }
