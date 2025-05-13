@@ -1,5 +1,7 @@
 use crate::{
-    material::{reflection_dir, refraction_dir, sample_lambert, sample_lambert_pdf, Bxdf},
+    material::{
+        reflection_dir, refraction_dir, sample_ggx_bsdf, sample_lambert, sample_lambert_pdf, Bxdf,
+    },
     math::{dot, max_elm, multiply, Color, Vec3, PI},
     random::XorRand,
     ray::{HitRecord, Ray},
@@ -110,6 +112,17 @@ pub fn radiance(scene: &Scene, ray: Ray, rand: &mut XorRand) -> Color {
 
                 throughput = multiply(throughput, record.color) * fresnel;
                 pdf *= refl_prob;
+            }
+            Bxdf::MicroBsdf { ax, ay } => {
+                let (coeff, dir) =
+                    sample_ggx_bsdf(ax, ay, now_ray.dir, orienting_normal, record.color, rand);
+
+                now_ray = Ray {
+                    org: record.pos + orienting_normal * 0.00001,
+                    dir,
+                };
+
+                throughput = multiply(throughput, coeff);
             }
         }
     }

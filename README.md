@@ -38,3 +38,6 @@ Stanford bunny:
 , ACM Transactions on Graphics, Volume 26, Issue 1
 
 ・https://qiita.com/omochi64/items/9336f57118ba918f82ec
+
+・Eric Heitz, Unity Technologies, Sampling the GGX Distribution of Visible Normals, Journal of Computer Graphics Techniques
+, Vol. 7, No. 4, 2018

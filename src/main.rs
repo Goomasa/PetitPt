@@ -174,6 +174,83 @@ fn example2() {
     let _ = render(&camera, &scene);
 }
 
+pub fn example3() {
+    let freshid = &mut FreshId::new();
+
+    let rect0 = Object::set_rect(
+        Axis::Y,
+        Vec3(-25., 0., 0.),
+        Vec3(25., 0., -50.),
+        Bxdf::Lambertian,
+        Vec3(1., 1., 1.),
+        freshid,
+    );
+    let rect1 = Object::set_rect(
+        Axis::Y,
+        Vec3(-25., 50., 0.),
+        Vec3(25., 50., -50.),
+        Bxdf::Lambertian,
+        Vec3(1., 1., 1.),
+        freshid,
+    );
+    let rect2 = Object::set_rect(
+        Axis::X,
+        Vec3(-25., 0., 0.),
+        Vec3(-25., 50., -50.),
+        Bxdf::Lambertian,
+        Vec3(1., 0.1, 0.1),
+        freshid,
+    );
+    let rect3 = Object::set_rect(
+        Axis::X,
+        Vec3(25., 0., 0.),
+        Vec3(25., 50., -50.),
+        Bxdf::Lambertian,
+        Vec3(0.1, 1., 0.1),
+        freshid,
+    );
+    let rect4 = Object::set_rect(
+        Axis::Z,
+        Vec3(-25., 0., -50.),
+        Vec3(25., 50., -50.),
+        Bxdf::Lambertian,
+        Vec3(1., 1., 1.),
+        freshid,
+    );
+    let rect5 = Object::set_rect(
+        Axis::Y,
+        Vec3(-5., 49.99, -20.),
+        Vec3(5., 49.99, -30.),
+        Bxdf::Light,
+        Vec3(25., 25., 25.),
+        freshid,
+    );
+
+    let sphere = Object::set_sphere(
+        Vec3(0., 10., -30.),
+        10.,
+        Bxdf::MicroBsdf { ax: 0.5, ay: 0.2 },
+        Vec3::new(0.99),
+        freshid,
+    );
+
+    let objects = vec![&rect0, &rect1, &rect2, &rect3, &rect4, &rect5, &sphere];
+    let camera = PinholeModel::new(
+        Vec3(0., 25., 55.),
+        800,
+        600,
+        40.,
+        Vec3(0., 0., -1.).normalize(),
+        30.,
+        4,
+        4,
+    );
+
+    let scene = Scene::new(objects, Vec3::new(0.));
+
+    let _ = render(&camera, &scene);
+}
+
 pub fn cornel_box() {
     let freshid = &mut FreshId::new();
 
@@ -239,6 +316,10 @@ pub fn cornel_box() {
     );
 
     let mut objects = vec![&rect0, &rect1, &rect2, &rect3, &rect4, &rect5];
+    for obj in polygon.iter() {
+        objects.push(obj);
+    }
+
     let camera = PinholeModel::new(
         Vec3(0., 25., 55.),
         800,
@@ -250,10 +331,6 @@ pub fn cornel_box() {
         4,
     );
 
-    for obj in polygon.iter() {
-        objects.push(obj);
-    }
-
     let scene = Scene::new(objects, Vec3::new(0.));
 
     let _ = render(&camera, &scene);
@@ -262,7 +339,8 @@ pub fn cornel_box() {
 fn main() {
     let start = std::time::Instant::now();
     //example1();
-    example2();
+    //example2();
+    example3();
     //cornel_box();
     let end = start.elapsed();
     println!("{}.{:03}sec", end.as_secs(), end.subsec_nanos() / 1_000_000);

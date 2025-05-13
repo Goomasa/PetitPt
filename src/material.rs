@@ -1,5 +1,5 @@
 use crate::{
-    math::{cross, dot, Vec3, EPS, PI},
+    math::{cross, dot, fmax, Color, Vec3, EPS, INF, PI},
     random::XorRand,
 };
 
@@ -9,6 +9,7 @@ pub enum Bxdf {
     Specular,
     Dielectric { ior: f64 },
     Light,
+    MicroBsdf { ax: f64, ay: f64 },
 }
 
 impl Bxdf {
@@ -22,7 +23,7 @@ impl Bxdf {
 
 pub fn sample_lambert(normal: &Vec3, rand: &mut XorRand) -> Vec3 {
     let w = *normal;
-    let u = if w.0 > EPS || w.0 < (-EPS) {
+    let u = if w.0.abs() > EPS {
         cross(w, Vec3(0., 1., 0.)).normalize()
     } else {
         cross(w, Vec3(1., 0., 0.)).normalize()
@@ -35,6 +36,10 @@ pub fn sample_lambert(normal: &Vec3, rand: &mut XorRand) -> Vec3 {
 
     (u * sin_theta * (phi.cos()) + v * sin_theta * (phi.sin()) + w * ((1. - sin_theta_sq).sqrt()))
         .normalize()
+}
+
+pub fn sample_lambert_pdf(dir: Vec3, normal: Vec3) -> f64 {
+    dot(dir, normal).abs() / PI
 }
 
 pub fn reflection_dir(normal: Vec3, in_dir: Vec3) -> Vec3 {
@@ -83,6 +88,72 @@ pub fn refraction_dir(
     }
 }
 
-pub fn sample_lambert_pdf(dir: Vec3, normal: Vec3) -> f64 {
-    dot(dir, normal).abs() / PI
+fn sample_ggx_vndf(normal: &Vec3, wi: &Vec3, ax: f64, ay: f64, rand: &mut XorRand) -> Vec3 {
+    let u = if normal.0.abs() > EPS {
+        cross(*normal, Vec3(0., 1., 0.)).normalize()
+    } else {
+        cross(*normal, Vec3(1., 0., 0.)).normalize()
+    };
+    let v = cross(*normal, u);
+
+    let ve = Vec3(dot(u, *wi), dot(v, *wi), dot(*normal, *wi));
+
+    let vh = Vec3(ax * ve.0, ay * ve.1, ve.2).normalize();
+    let lensq = vh.0 * vh.0 + vh.1 * vh.1;
+    let t1 = if lensq > 0. {
+        Vec3(-vh.1, vh.0, 0.) * (1. / lensq.sqrt())
+    } else {
+        Vec3(1., 0., 0.)
+    };
+    let t2 = cross(vh, t1);
+
+    let r = rand.next01().sqrt();
+    let phi = 2. * PI * rand.next01();
+    let p1 = r * phi.cos();
+    let mut p2 = r * phi.sin();
+    let s = 0.5 * (1. + vh.2);
+    p2 = (1. - s) * (1. - p1 * p1).sqrt() + s * p2;
+
+    let nh = t1 * p1 + t2 * p2 + vh * fmax(1. - p1 * p1 - p2 * p2, 0.).sqrt();
+    let vn = Vec3(ax * nh.0, ay * nh.1, fmax(nh.2, 0.));
+    (u * vn.0 + v * vn.1 + *normal * vn.2).normalize()
+}
+
+pub fn mask_shadow_fn(alpha_sq: f64, v: &Vec3, normal: &Vec3) -> f64 {
+    let cos_theta = dot(*v, *normal);
+    let tan_theta_sq = if cos_theta != 0. {
+        1. / (cos_theta * cos_theta) - 1.
+    } else {
+        INF
+    };
+
+    2. / (1. + (1. + alpha_sq * tan_theta_sq).sqrt())
+}
+
+pub fn sample_ggx_bsdf(
+    ax: f64,
+    ay: f64,
+    in_dir: Vec3,
+    normal: Vec3,
+    f0: Vec3, //color
+    rand: &mut XorRand,
+) -> (Color, Vec3) {
+    let vn = sample_ggx_vndf(&normal, &-in_dir, ax, ay, rand);
+    let dir = reflection_dir(vn, in_dir);
+
+    let fresnel = f0 + (Vec3::new(1.) - f0) * (1. - dot(dir, vn).abs()).powf(5.).clamp(0., 1.);
+
+    let wi_dash = -in_dir + normal * dot(normal, in_dir);
+    let u = cross(normal, Vec3(0., 1., 0.)).normalize();
+    let v = cross(normal, u);
+
+    let tan_phi = dot(wi_dash, v) / dot(wi_dash, u);
+    let cos_phi_sq = 1. / (1. + tan_phi * tan_phi);
+    let alpha_sq = ax * ax * cos_phi_sq + ay * ay * (1.0 - cos_phi_sq);
+    let gi = mask_shadow_fn(alpha_sq, &in_dir, &normal);
+
+    (
+        fresnel * gi * dot(dir, normal) / dot(in_dir, normal).abs(),
+        dir,
+    )
 }

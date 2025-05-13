@@ -237,7 +237,7 @@ impl Camara for HexLensModel {
     fn get_coeff(&self) -> f64 {
         let w_per_px = self.sensor_w / self.pixel_w as f64;
         let h_per_px = self.sensor_h / self.pixel_h as f64;
-        let lens_area = (3_f32).powf(1.5) as f64 * self.lens_side * self.lens_side;
+        let lens_area = (3_f64).powf(1.5) * self.lens_side * self.lens_side;
         self.iso * w_per_px * h_per_px * lens_area / (self.spp as f64 * self.sspp.pow(2) as f64)
     }
 
