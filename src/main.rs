@@ -110,7 +110,7 @@ fn example2() {
         Vec3(-15., 0., -15.),
         Vec3(15., 15., -15.),
         Bxdf::Light,
-        Vec3(10., 10., 10.),
+        Vec3(20., 20., 20.),
         freshid,
     );
 
@@ -227,9 +227,9 @@ pub fn example3() {
     );
 
     let sphere = Object::set_sphere(
-        Vec3(0., 10., -30.),
+        Vec3(0., 10., -25.),
         10.,
-        Bxdf::MicroBsdf { ax: 0.5, ay: 0.2 },
+        Bxdf::MicroBrdf { ax: 0.5, ay: 0.2 },
         Vec3::new(0.99),
         freshid,
     );

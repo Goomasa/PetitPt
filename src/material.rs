@@ -9,7 +9,7 @@ pub enum Bxdf {
     Specular,
     Dielectric { ior: f64 },
     Light,
-    MicroBsdf { ax: f64, ay: f64 },
+    MicroBrdf { ax: f64, ay: f64 },
 }
 
 impl Bxdf {
@@ -38,8 +38,8 @@ pub fn sample_lambert(normal: &Vec3, rand: &mut XorRand) -> Vec3 {
         .normalize()
 }
 
-pub fn sample_lambert_pdf(dir: Vec3, normal: Vec3) -> f64 {
-    dot(dir, normal).abs() / PI
+pub fn sample_lambert_pdf(dir: &Vec3, normal: &Vec3) -> f64 {
+    dot(*dir, *normal).abs() / PI
 }
 
 pub fn reflection_dir(normal: Vec3, in_dir: Vec3) -> Vec3 {
@@ -88,7 +88,7 @@ pub fn refraction_dir(
     }
 }
 
-fn sample_ggx_vndf(normal: &Vec3, wi: &Vec3, ax: f64, ay: f64, rand: &mut XorRand) -> Vec3 {
+pub fn sample_ggx_vndf(normal: &Vec3, wi: &Vec3, ax: f64, ay: f64, rand: &mut XorRand) -> Vec3 {
     let u = if normal.0.abs() > EPS {
         cross(*normal, Vec3(0., 1., 0.)).normalize()
     } else {
@@ -130,30 +130,39 @@ pub fn mask_shadow_fn(alpha_sq: f64, v: &Vec3, normal: &Vec3) -> f64 {
     2. / (1. + (1. + alpha_sq * tan_theta_sq).sqrt())
 }
 
-pub fn sample_ggx_bsdf(
-    ax: f64,
-    ay: f64,
-    in_dir: Vec3,
-    normal: Vec3,
-    f0: Vec3, //color
-    rand: &mut XorRand,
-) -> (Color, Vec3) {
-    let vn = sample_ggx_vndf(&normal, &-in_dir, ax, ay, rand);
-    let dir = reflection_dir(vn, in_dir);
-
-    let fresnel = f0 + (Vec3::new(1.) - f0) * (1. - dot(dir, vn).abs()).powf(5.).clamp(0., 1.);
-
-    let wi_dash = -in_dir + normal * dot(normal, in_dir);
-    let u = cross(normal, Vec3(0., 1., 0.)).normalize();
-    let v = cross(normal, u);
+pub fn ggx_alpha2(ax: f64, ay: f64, wi: &Vec3, normal: &Vec3) -> f64 {
+    let wi_dash = *wi - *normal * dot(*wi, *normal);
+    let u = cross(*normal, Vec3(0., 1., 0.)).normalize();
+    let v = cross(*normal, u);
 
     let tan_phi = dot(wi_dash, v) / dot(wi_dash, u);
     let cos_phi_sq = 1. / (1. + tan_phi * tan_phi);
-    let alpha_sq = ax * ax * cos_phi_sq + ay * ay * (1.0 - cos_phi_sq);
-    let gi = mask_shadow_fn(alpha_sq, &in_dir, &normal);
+    ax * ax * cos_phi_sq + ay * ay * (1. - cos_phi_sq)
+}
 
-    (
-        fresnel * gi * dot(dir, normal) / dot(in_dir, normal).abs(),
-        dir,
-    )
+pub fn fresnel_dielectric(f0: &Color, wi: &Vec3, vn: &Vec3) -> Color {
+    *f0 + (Vec3::new(1.) - *f0) * (1. - dot(*wi, *vn)).clamp(0., 1.).powf(5.)
+}
+
+pub fn ggx_normal_df(alpha_sq: f64, ax: f64, ay: f64, normal: &Vec3, vn: &Vec3) -> f64 {
+    let cos_theta = dot(*vn, *normal);
+    let tan_theta_sq = if cos_theta != 0. {
+        1. / (cos_theta * cos_theta) - 1.
+    } else {
+        INF
+    };
+
+    let vn_dash = *vn - *normal * cos_theta;
+    let u = cross(*normal, Vec3(0., 1., 0.)).normalize();
+    let v = cross(*normal, u);
+
+    let tan_phi = dot(vn_dash, v) / dot(vn_dash, u);
+    let cos_phi_sq = 1. / (1. + tan_phi * tan_phi);
+
+    if ax == 0. || ay == 0. {
+        0.
+    } else {
+        let s = 1. + (cos_phi_sq / (ax * ax) + (1. - cos_phi_sq) / (ay * ay)) * tan_theta_sq;
+        1. / (PI * alpha_sq * cos_theta.powf(4.) * s * s)
+    }
 }

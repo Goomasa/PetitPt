@@ -1,7 +1,5 @@
 use crate::{
-    material::{
-        reflection_dir, refraction_dir, sample_ggx_bsdf, sample_lambert, sample_lambert_pdf, Bxdf,
-    },
+    material::*,
     math::{dot, max_elm, multiply, Color, Vec3, PI},
     random::XorRand,
     ray::{HitRecord, Ray},
@@ -13,7 +11,7 @@ const MAX_DEPTH: u32 = 30;
 const PI_INV: f64 = 1. / PI;
 
 pub fn radiance(scene: &Scene, ray: Ray, rand: &mut XorRand) -> Color {
-    let mut record = HitRecord::new();
+    let mut record;
     let mut now_ray = ray;
     let mut roulette_prob;
     let mut pdf = 1.0;
@@ -21,10 +19,9 @@ pub fn radiance(scene: &Scene, ray: Ray, rand: &mut XorRand) -> Color {
     let mut throughput = Vec3::new(1.);
     let mut rad = Vec3::new(0.);
 
-    let mut prev_record;
+    let mut brdf_sample_pdf = -1.;
 
     for time in 0.. {
-        prev_record = record;
         record = HitRecord::new();
         if !scene.intersect(&now_ray, &mut record, &scene.bvh_tree[0]) {
             rad = rad + multiply(throughput, scene.background) / pdf;
@@ -57,34 +54,33 @@ pub fn radiance(scene: &Scene, ray: Ray, rand: &mut XorRand) -> Color {
 
         match record.bxdf {
             Bxdf::Light => {
-                if let Bxdf::Lambertian = prev_record.bxdf {
-                    let nee_pdf = scene.sample_obj_pdf(prev_record.pos, &record);
-                    let pt_pdf = sample_lambert_pdf(
-                        (record.pos - prev_record.pos).normalize(),
-                        prev_record.normal,
-                    );
-                    let mis_weight = pt_pdf / (nee_pdf + pt_pdf);
-                    rad = rad + multiply(throughput, record.color) * mis_weight / pdf;
-                } else {
+                if brdf_sample_pdf < 0. {
                     rad = rad + multiply(throughput, record.color) / pdf;
+                } else {
+                    let nee_pdf = scene.sample_obj_pdf(now_ray.org, &record);
+                    let mis_weight = brdf_sample_pdf / (brdf_sample_pdf + nee_pdf);
+                    rad = rad + multiply(throughput, record.color) * mis_weight / pdf;
                 }
                 break;
             }
             Bxdf::Lambertian => {
-                let out_dir = sample_lambert(&orienting_normal, rand);
+                let dir = sample_lambert(&orienting_normal, rand);
                 let org = record.pos + orienting_normal * 0.00001;
-                now_ray = Ray {
-                    org: org,
-                    dir: out_dir,
-                };
+                now_ray = Ray { org, dir };
 
                 throughput = multiply(throughput, record.color);
                 let nee_result = scene.nee(org, rand);
+
                 if nee_result.pdf != 0. {
-                    let dir_cosine = dot(orienting_normal, nee_result.dir).abs();
-                    let mis_weight = 1. / (nee_result.pdf + dir_cosine * PI_INV);
-                    rad = rad + multiply(throughput, nee_result.color * PI_INV) * mis_weight / pdf;
+                    let nee_dir_cos = dot(orienting_normal, nee_result.dir).abs();
+                    let mis_weight = 1. / (nee_result.pdf + nee_dir_cos * PI_INV);
+                    rad = rad
+                        + multiply(throughput, nee_result.color * PI_INV)
+                            * nee_dir_cos
+                            * mis_weight
+                            / pdf;
                 }
+                brdf_sample_pdf = sample_lambert_pdf(&dir, &orienting_normal);
             }
             Bxdf::Specular => {
                 let out_dir = reflection_dir(orienting_normal, now_ray.dir);
@@ -93,6 +89,7 @@ pub fn radiance(scene: &Scene, ray: Ray, rand: &mut XorRand) -> Color {
                     dir: out_dir,
                 };
                 throughput = multiply(throughput, record.color);
+                brdf_sample_pdf = 1.;
             }
             Bxdf::Dielectric { ior } => {
                 let into = dot(record.normal, now_ray.dir) < 0.;
@@ -112,17 +109,40 @@ pub fn radiance(scene: &Scene, ray: Ray, rand: &mut XorRand) -> Color {
 
                 throughput = multiply(throughput, record.color) * fresnel;
                 pdf *= refl_prob;
+                brdf_sample_pdf = 1.;
             }
-            Bxdf::MicroBsdf { ax, ay } => {
-                let (coeff, dir) =
-                    sample_ggx_bsdf(ax, ay, now_ray.dir, orienting_normal, record.color, rand);
+            Bxdf::MicroBrdf { ax, ay } => {
+                let wi = -now_ray.dir;
+                let vn = sample_ggx_vndf(&orienting_normal, &wi, ax, ay, rand);
+                let dir = reflection_dir(vn, -wi);
+                let alpha_sq = ggx_alpha2(ax, ay, &wi, &orienting_normal);
+                let g1_wo = mask_shadow_fn(alpha_sq, &dir, &orienting_normal);
+                let fresnel = fresnel_dielectric(&record.color, &wi, &vn);
 
-                now_ray = Ray {
-                    org: record.pos + orienting_normal * 0.00001,
-                    dir,
-                };
+                let org = record.pos + orienting_normal * 0.00001;
+                now_ray = Ray { org, dir };
 
-                throughput = multiply(throughput, coeff);
+                let nee_result = scene.nee(org, rand);
+
+                let g1_wi = mask_shadow_fn(alpha_sq, &wi, &orienting_normal);
+                let d_vn = ggx_normal_df(alpha_sq, ax, ay, &orienting_normal, &vn);
+                let dot_wi_n = dot(wi, orienting_normal).abs();
+                let vndf = g1_wi * d_vn / (4. * dot_wi_n);
+
+                if nee_result.pdf != 0. {
+                    let nee_vn = (wi + nee_result.dir).normalize();
+                    let d_nee_vn = ggx_normal_df(alpha_sq, ax, ay, &orienting_normal, &nee_vn);
+                    let nee_vndf = g1_wi * d_nee_vn / (4. * dot_wi_n);
+                    let g1_nee_wo = mask_shadow_fn(alpha_sq, &nee_result.dir, &orienting_normal);
+                    let mis_weight = 1. / (nee_result.pdf + nee_vndf);
+                    let nee_fresnel = fresnel_dielectric(&record.color, &wi, &nee_vn);
+                    let brdf = nee_fresnel * nee_vndf * g1_nee_wo;
+                    rad = rad
+                        + multiply(nee_result.color, multiply(throughput, brdf)) * mis_weight / pdf;
+                }
+
+                throughput = multiply(throughput, fresnel * g1_wo);
+                brdf_sample_pdf = vndf;
             }
         }
     }
