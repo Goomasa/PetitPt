@@ -53,15 +53,15 @@ pub fn refraction_dir(
     normal: Vec3,
     in_dir: Vec3,
     rand: &mut XorRand,
-) -> (bool, Vec3, f64, f64) {
-    //return (is_refract,new_dir, fresnel, prob)
+) -> (bool, bool, Vec3, f64, f64) {
+    //return (refractable, is_refract, new_dir, fresnel, prob)
     let reflection_dir = reflection_dir(normal, in_dir);
     let nnt = if into { 1. / ior } else { ior };
     let ddn = dot(in_dir, normal);
     let cos2t = 1. - nnt * nnt * (1. - ddn * ddn);
 
     if cos2t < 0. {
-        return (false, reflection_dir, 1.0, 1.0);
+        return (false, false, reflection_dir, 1.0, 1.0);
     }
 
     let refraction_dir = (-normal * (cos2t.sqrt()) + (in_dir - normal * ddn) * nnt).normalize();
@@ -74,16 +74,22 @@ pub fn refraction_dir(
         1. - dot(refraction_dir, -normal)
     };
     let fresnel_reflectance = r0 + (1. - r0) * c.powi(5);
-    let fresnel_transmittance = (1.0 - fresnel_reflectance) * nnt * nnt;
     let reflection_prob = 0.25 + 0.5 * fresnel_reflectance;
 
     if rand.next01() < reflection_prob {
-        (false, reflection_dir, fresnel_reflectance, reflection_prob)
+        (
+            true,
+            false,
+            reflection_dir,
+            fresnel_reflectance,
+            reflection_prob,
+        )
     } else {
         (
             true,
+            true,
             refraction_dir,
-            fresnel_transmittance,
+            1. - fresnel_reflectance,
             1. - reflection_prob,
         )
     }
@@ -120,7 +126,7 @@ pub fn sample_ggx_vndf(normal: &Vec3, wi: &Vec3, ax: f64, ay: f64, rand: &mut Xo
     (u * vn.0 + v * vn.1 + *normal * vn.2).normalize()
 }
 
-pub fn mask_shadow_fn(alpha_sq: f64, v: &Vec3, normal: &Vec3) -> f64 {
+pub fn shadow_mask_fn(alpha_sq: f64, v: &Vec3, normal: &Vec3) -> f64 {
     let cos_theta = dot(*v, *normal);
     let tan_theta_sq = 1. / (cos_theta * cos_theta) - 1.;
 
@@ -137,8 +143,21 @@ pub fn ggx_alpha2(ax: f64, ay: f64, wi: &Vec3, normal: &Vec3) -> f64 {
     ax * ax * cos_phi_sq + ay * ay * (1. - cos_phi_sq)
 }
 
-pub fn fresnel_dielectric(f0: &Color, wi: &Vec3, vn: &Vec3) -> Color {
+pub fn f_dielectric_col(f0: &Color, wi: &Vec3, vn: &Vec3) -> Color {
     *f0 + (Vec3::new(1.) - *f0) * (1. - dot(*wi, *vn)).clamp(0., 1.).powf(5.)
+}
+
+pub fn f_dielectric_ior(ior: f64, into: bool, wo: &Vec3, vn: &Vec3) -> f64 {
+    let a = ior - 1.;
+    let b = ior + 1.;
+    let r0 = (a * a) / (b * b);
+    let c = if into {
+        1. + dot(*wo, -*vn)
+    } else {
+        1. - dot(*wo, -*vn)
+    };
+
+    r0 + (1. - r0) * c.powf(5.)
 }
 
 pub fn ggx_normal_df(alpha_sq: f64, ax: f64, ay: f64, normal: &Vec3, vn: &Vec3) -> f64 {
@@ -162,5 +181,5 @@ pub fn ggx_normal_df(alpha_sq: f64, ax: f64, ay: f64, normal: &Vec3, vn: &Vec3) 
 
 pub fn micro_btdf_j(ior_i: f64, ior_o: f64, wi: &Vec3, wo: &Vec3, wh: &Vec3) -> f64 {
     let dot_wo_wh = dot(*wo, *wh);
-    ior_o * ior_o * dot_wo_wh.abs() / (ior_i * dot_wo_wh + ior_o * dot(*wi, *wh)).powf(2.)
+    ior_o * ior_o * dot_wo_wh.abs() / (ior_i * dot(*wi, *wh) + ior_o * dot_wo_wh).powf(2.)
 }
