@@ -1,5 +1,5 @@
 use crate::{
-    math::{cross, dot, fmax, Color, Vec3, EPS, INF, PI},
+    math::{cross, dot, fmax, Color, Vec3, EPS, PI},
     random::XorRand,
 };
 
@@ -10,6 +10,7 @@ pub enum Bxdf {
     Dielectric { ior: f64 },
     Light,
     MicroBrdf { ax: f64, ay: f64 },
+    MicroBtdf { a: f64, ior: f64 },
 }
 
 impl Bxdf {
@@ -121,11 +122,7 @@ pub fn sample_ggx_vndf(normal: &Vec3, wi: &Vec3, ax: f64, ay: f64, rand: &mut Xo
 
 pub fn mask_shadow_fn(alpha_sq: f64, v: &Vec3, normal: &Vec3) -> f64 {
     let cos_theta = dot(*v, *normal);
-    let tan_theta_sq = if cos_theta != 0. {
-        1. / (cos_theta * cos_theta) - 1.
-    } else {
-        INF
-    };
+    let tan_theta_sq = 1. / (cos_theta * cos_theta) - 1.;
 
     2. / (1. + (1. + alpha_sq * tan_theta_sq).sqrt())
 }
@@ -146,11 +143,7 @@ pub fn fresnel_dielectric(f0: &Color, wi: &Vec3, vn: &Vec3) -> Color {
 
 pub fn ggx_normal_df(alpha_sq: f64, ax: f64, ay: f64, normal: &Vec3, vn: &Vec3) -> f64 {
     let cos_theta = dot(*vn, *normal);
-    let tan_theta_sq = if cos_theta != 0. {
-        1. / (cos_theta * cos_theta) - 1.
-    } else {
-        INF
-    };
+    let tan_theta_sq = 1. / (cos_theta * cos_theta) - 1.;
 
     let vn_dash = *vn - *normal * cos_theta;
     let u = cross(*normal, Vec3(0., 1., 0.)).normalize();
@@ -165,4 +158,9 @@ pub fn ggx_normal_df(alpha_sq: f64, ax: f64, ay: f64, normal: &Vec3, vn: &Vec3) 
         let s = 1. + (cos_phi_sq / (ax * ax) + (1. - cos_phi_sq) / (ay * ay)) * tan_theta_sq;
         1. / (PI * alpha_sq * cos_theta.powf(4.) * s * s)
     }
+}
+
+pub fn micro_btdf_j(ior_i: f64, ior_o: f64, wi: &Vec3, wo: &Vec3, wh: &Vec3) -> f64 {
+    let dot_wo_wh = dot(*wo, *wh);
+    ior_o * ior_o * dot_wo_wh.abs() / (ior_i * dot_wo_wh + ior_o * dot(*wi, *wh)).powf(2.)
 }

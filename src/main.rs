@@ -214,7 +214,7 @@ pub fn example3() {
         Vec3(-25., 0., -50.),
         Vec3(25., 50., -50.),
         Bxdf::Lambertian,
-        Vec3(1., 1., 1.),
+        Vec3(0.1, 0.1, 1.),
         freshid,
     );
     let rect5 = Object::set_rect(
@@ -222,15 +222,15 @@ pub fn example3() {
         Vec3(-5., 49.99, -20.),
         Vec3(5., 49.99, -30.),
         Bxdf::Light,
-        Vec3(25., 25., 25.),
+        Vec3(20., 20., 20.),
         freshid,
     );
 
     let sphere = Object::set_sphere(
         Vec3(0., 10., -25.),
         10.,
-        Bxdf::MicroBrdf { ax: 0.5, ay: 0.2 },
-        Vec3::new(0.99),
+        Bxdf::MicroBtdf { a: 0.5, ior: 1.5 },
+        Vec3::new(1.),
         freshid,
     );
 

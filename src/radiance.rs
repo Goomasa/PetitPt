@@ -115,7 +115,7 @@ pub fn radiance(scene: &Scene, ray: Ray, rand: &mut XorRand) -> Color {
                 let wi = -now_ray.dir;
                 let vn = sample_ggx_vndf(&orienting_normal, &wi, ax, ay, rand);
                 let dir = reflection_dir(vn, -wi);
-                let alpha_sq = ggx_alpha2(ax, ay, &wi, &orienting_normal);
+                let alpha_sq = ggx_alpha2(ax, ay, &vn, &orienting_normal);
                 let g1_wo = mask_shadow_fn(alpha_sq, &dir, &orienting_normal);
                 let fresnel = fresnel_dielectric(&record.color, &wi, &vn);
 
@@ -133,6 +133,7 @@ pub fn radiance(scene: &Scene, ray: Ray, rand: &mut XorRand) -> Color {
                     let nee_vn = (wi + nee_result.dir).normalize();
                     let d_nee_vn = ggx_normal_df(alpha_sq, ax, ay, &orienting_normal, &nee_vn);
                     let nee_vndf = g1_wi * d_nee_vn / (4. * dot_wi_n);
+
                     let g1_nee_wo = mask_shadow_fn(alpha_sq, &nee_result.dir, &orienting_normal);
                     let mis_weight = 1. / (nee_result.pdf + nee_vndf);
                     let nee_fresnel = fresnel_dielectric(&record.color, &wi, &nee_vn);
@@ -143,6 +144,45 @@ pub fn radiance(scene: &Scene, ray: Ray, rand: &mut XorRand) -> Color {
 
                 throughput = multiply(throughput, fresnel * g1_wo);
                 brdf_sample_pdf = vndf;
+            }
+            Bxdf::MicroBtdf { a, ior } => {
+                let wi = -now_ray.dir;
+                let vn = sample_ggx_vndf(&orienting_normal, &wi, a, a, rand);
+                let alpha_sq = a * a;
+
+                let into = dot(record.normal, now_ray.dir) < 0.;
+                let (is_refract, dir, fresnel, refl_prob) =
+                    refraction_dir(into, ior, vn, now_ray.dir, rand);
+
+                let g1_wo = mask_shadow_fn(alpha_sq, &dir, &orienting_normal);
+
+                if is_refract {
+                    let org = record.pos - orienting_normal * 0.00001;
+                    now_ray = Ray { org, dir };
+
+                    let ja;
+                    let wh;
+                    if into {
+                        wh = -(wi + dir * ior).normalize();
+                        ja = micro_btdf_j(1., ior, &wi, &dir, &wh);
+                    } else {
+                        wh = -(wi * ior + dir).normalize();
+                        ja = micro_btdf_j(ior, 1., &wi, &dir, &wh);
+                    };
+
+                    throughput =
+                        multiply(throughput, record.color) * fresnel * g1_wo * dot(dir, wh).abs()
+                            / dot(wi, vn).abs();
+                    pdf *= refl_prob;
+                    brdf_sample_pdf = -1.;
+                } else {
+                    let org = record.pos + orienting_normal * 0.00001;
+                    now_ray = Ray { org, dir };
+
+                    throughput = multiply(throughput, record.color) * fresnel * g1_wo;
+                    pdf *= refl_prob;
+                    brdf_sample_pdf = -1.;
+                }
             }
         }
     }
