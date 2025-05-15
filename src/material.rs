@@ -53,15 +53,15 @@ pub fn refraction_dir(
     normal: Vec3,
     in_dir: Vec3,
     rand: &mut XorRand,
-) -> (bool, bool, Vec3, f64, f64) {
-    //return (refractable, is_refract, new_dir, fresnel, prob)
+) -> (bool, Vec3, f64, f64) {
+    //return (is_refract, new_dir, fresnel, prob)
     let reflection_dir = reflection_dir(normal, in_dir);
     let nnt = if into { 1. / ior } else { ior };
     let ddn = dot(in_dir, normal);
     let cos2t = 1. - nnt * nnt * (1. - ddn * ddn);
 
     if cos2t < 0. {
-        return (false, false, reflection_dir, 1.0, 1.0);
+        return (false, reflection_dir, 1.0, 1.0);
     }
 
     let refraction_dir = (-normal * (cos2t.sqrt()) + (in_dir - normal * ddn) * nnt).normalize();
@@ -73,25 +73,13 @@ pub fn refraction_dir(
     } else {
         1. - dot(refraction_dir, -normal)
     };
-    let fresnel_reflectance = r0 + (1. - r0) * c.powi(5);
+    let fresnel_reflectance = r0 + (1. - r0) * c.clamp(0., 1.).powi(5);
     let reflection_prob = 0.25 + 0.5 * fresnel_reflectance;
 
-    if rand.next01() < reflection_prob {
-        (
-            true,
-            false,
-            reflection_dir,
-            fresnel_reflectance,
-            reflection_prob,
-        )
+    if rand.next01() < 0. {
+        (false, reflection_dir, fresnel_reflectance, reflection_prob)
     } else {
-        (
-            true,
-            true,
-            refraction_dir,
-            1. - fresnel_reflectance,
-            1. - reflection_prob,
-        )
+        (true, refraction_dir, 1. - fresnel_reflectance, 1.)
     }
 }
 

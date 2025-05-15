@@ -222,14 +222,14 @@ pub fn example3() {
         Vec3(-5., 49.99, -20.),
         Vec3(5., 49.99, -30.),
         Bxdf::Light,
-        Vec3(20., 20., 20.),
+        Vec3(25., 25., 25.),
         freshid,
     );
 
     let sphere = Object::set_sphere(
         Vec3(0., 10., -25.),
         10.,
-        Bxdf::MicroBtdf { a: 0.7, ior: 1.5 },
+        Bxdf::MicroBtdf { a: 0.5, ior: 1.5 },
         Vec3::new(1.),
         freshid,
     );

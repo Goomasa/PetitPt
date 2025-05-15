@@ -1,6 +1,8 @@
+use std::io;
+
 use crate::{
     material::*,
-    math::{dot, max_elm, multiply, Color, Vec3, PI},
+    math::{dot, max_elm, multiply, Color, Vec3, EPS, PI},
     random::XorRand,
     ray::{HitRecord, Ray},
     scene::Scene,
@@ -93,7 +95,7 @@ pub fn radiance(scene: &Scene, ray: Ray, rand: &mut XorRand) -> Color {
             }
             Bxdf::Dielectric { ior } => {
                 let into = dot(record.normal, now_ray.dir) < 0.;
-                let (_, is_refract, out_dir, fresnel, refl_prob) =
+                let (is_refract, out_dir, fresnel, refl_prob) =
                     refraction_dir(into, ior, orienting_normal, now_ray.dir, rand);
 
                 let new_org;
@@ -147,7 +149,11 @@ pub fn radiance(scene: &Scene, ray: Ray, rand: &mut XorRand) -> Color {
                 }
 
                 throughput = multiply(throughput, fresnel * g1_wo);
-                brdf_sample_pdf = vndf;
+                if ax == 0. || ay == 0. {
+                    brdf_sample_pdf = 1.;
+                } else {
+                    brdf_sample_pdf = vndf;
+                }
             }
             Bxdf::MicroBtdf { a, ior } => {
                 let wi = -now_ray.dir;
@@ -155,7 +161,7 @@ pub fn radiance(scene: &Scene, ray: Ray, rand: &mut XorRand) -> Color {
                 let alpha_sq = a * a;
 
                 let into = dot(record.normal, now_ray.dir) < 0.;
-                let (refractable, is_refract, dir, fresnel, refl_prob) =
+                let (is_refract, dir, fresnel, refl_prob) =
                     refraction_dir(into, ior, vn, now_ray.dir, rand);
 
                 let g1_wo = shadow_mask_fn(alpha_sq, &dir, &orienting_normal);
@@ -173,32 +179,36 @@ pub fn radiance(scene: &Scene, ray: Ray, rand: &mut XorRand) -> Color {
                         micro_btdf_j(ior, 1., &wi, &dir, &vn)
                     };
 
-                    let vndf = g1_wi * dot(wi, vn).abs() * d_vn / dot_wi_n * ja;
+                    let vndf = g1_wi * dot(wi, vn) * d_vn * ja / dot_wi_n;
 
                     let nee_result = scene.nee(org, rand);
                     if nee_result.pdf != 0. {
                         let nee_wh;
                         let ja;
                         if into {
-                            nee_wh = -(wi + nee_result.dir * ior);
+                            nee_wh = -(wi + nee_result.dir * ior).normalize();
                             ja = micro_btdf_j(1., ior, &wi, &nee_result.dir, &nee_wh);
                         } else {
-                            nee_wh = -(wi * ior + nee_result.dir);
+                            nee_wh = -(wi * ior + nee_result.dir).normalize();
                             ja = micro_btdf_j(ior, 1., &wi, &nee_result.dir, &nee_wh);
                         }
 
-                        let g1_nee_wo =
-                            shadow_mask_fn(alpha_sq, &nee_result.dir, &orienting_normal);
-                        let d_nee_vn = ggx_normal_df(alpha_sq, a, a, &orienting_normal, &nee_wh);
-                        let nee_vndf = g1_wi * dot(wi, nee_wh).abs() * d_nee_vn / dot_wi_n * ja;
-                        let mis_weight = 1. / (nee_result.pdf + nee_vndf);
-                        let nee_fresnel = f_dielectric_ior(ior, into, &nee_result.dir, &nee_wh);
-                        let nee_btdf = (1. - nee_fresnel) * g1_nee_wo * nee_vndf * dot(wi, nee_wh);
-                        rad = rad
-                            + multiply(nee_result.color, multiply(throughput, record.color))
-                                * nee_btdf
-                                * mis_weight
-                                / pdf;
+                        if dot(orienting_normal, nee_wh) > EPS {
+                            let g1_nee_wo =
+                                shadow_mask_fn(alpha_sq, &nee_result.dir, &orienting_normal);
+                            let d_nee_vn =
+                                ggx_normal_df(alpha_sq, a, a, &orienting_normal, &nee_wh);
+                            let nee_vndf = g1_wi * dot(wi, nee_wh) * d_nee_vn * ja / dot_wi_n;
+                            let mis_weight = 1. / (nee_result.pdf + nee_vndf);
+                            let nee_fresnel = f_dielectric_ior(ior, into, &nee_result.dir, &nee_wh);
+                            let nee_btdf =
+                                (1. - nee_fresnel) * g1_nee_wo * nee_vndf * dot(wi, nee_wh);
+                            rad = rad
+                                + multiply(nee_result.color, multiply(throughput, record.color))
+                                    * nee_btdf
+                                    * mis_weight
+                                    / pdf;
+                        }
                     }
 
                     throughput = multiply(throughput, record.color) * fresnel * g1_wo;
