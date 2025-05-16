@@ -19,6 +19,7 @@ mod random;
 mod ray;
 mod render;
 mod scene;
+mod texture;
 
 fn example1() {
     let freshid = &mut FreshId::new();
@@ -308,7 +309,7 @@ pub fn cornel_box() {
     //http://graphics.stanford.edu/data/3Dscanrep/
     let polygon = read_ply(
         "assets/bun_zipper_res4.ply",
-        Vec3(0.1, 0.1, 1.),
+        Vec3(0.1, 0.1, 1.0),
         Bxdf::Lambertian,
         200.,
         Vec3(5., -7.5, -20.),
