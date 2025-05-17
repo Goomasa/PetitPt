@@ -8,6 +8,7 @@ use crate::material::Bxdf;
 use crate::math::{Color, Point3, Vec3};
 use crate::object::Object;
 use crate::random::FreshId;
+use crate::texture::Texture;
 
 fn convert_to_coord(point: &LinkedHashMap<String, Property>) -> Point3 {
     let x = match point["x"] {
@@ -28,14 +29,14 @@ fn convert_to_coord(point: &LinkedHashMap<String, Property>) -> Point3 {
     Vec3(x, y, z)
 }
 
-pub fn read_ply(
+pub fn read_ply<'a>(
     file_path: &str,
     color: Color,
     bxdf: Bxdf,
     scale: f64,
     translation: Vec3,
-    freshid: &mut FreshId,
-) -> Vec<Object> {
+    freshid: &'a mut FreshId,
+) -> Vec<Object<'a>> {
     let mut file = std::fs::File::open(file_path).unwrap();
     let parser = ply::parser::Parser::<ply::ply::DefaultElement>::new();
 
@@ -55,7 +56,7 @@ pub fn read_ply(
         let q = convert_to_coord(&points[(idx[1]) as usize]) * scale + translation;
         let r = convert_to_coord(&points[(idx[2]) as usize]) * scale + translation;
 
-        let triangle = Object::set_tri(p, q, r, bxdf, color, freshid);
+        let triangle = Object::set_tri(p, q, r, bxdf, Texture::SolidTex { color: color }, freshid);
         objects.push(triangle);
     }
 

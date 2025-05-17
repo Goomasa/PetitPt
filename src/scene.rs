@@ -10,9 +10,9 @@ use crate::{
 };
 
 pub struct Scene<'a> {
-    pub objects: Vec<&'a Object>,
+    pub objects: Vec<&'a Object<'a>>,
     pub background: Color,
-    pub lights: Vec<&'a Object>,
+    pub lights: Vec<&'a Object<'a>>,
     pub bvh_tree: BvhTree,
 }
 

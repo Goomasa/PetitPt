@@ -31,6 +31,14 @@ pub fn load_hdr(path: &str) -> (Vec<Color>, usize, usize) {
 }
 
 impl<'a> Texture<'a> {
+    pub fn set_solid(col: Color) -> Self {
+        Texture::SolidTex { color: col }
+    }
+
+    pub fn set_checker(div: u32, col1: Color, col2: Color) -> Self {
+        Texture::CheckerTex { div, col1, col2 }
+    }
+
     pub fn get_color(&self, u: f64, v: f64) -> Color {
         match *self {
             Texture::SolidTex { color } => color,

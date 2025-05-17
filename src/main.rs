@@ -6,6 +6,7 @@ use polygon::read_ply;
 use random::FreshId;
 use render::render;
 use scene::Scene;
+use texture::Texture;
 
 mod aabb;
 mod bvh;
@@ -29,7 +30,7 @@ fn example1() {
         Vec3(-100., 0., -100.),
         Vec3(100., 0., 100.),
         Bxdf::Lambertian,
-        Vec3(0.3, 0.3, 0.3),
+        Texture::set_solid(Vec3::new(0.3)),
         freshid,
     );
 
@@ -37,7 +38,7 @@ fn example1() {
         Vec3(0., 7., -5.),
         7.,
         Bxdf::Lambertian,
-        Vec3(0.9, 0.3, 0.),
+        Texture::set_solid(Vec3(0.9, 0.3, 0.)),
         freshid,
     );
 
@@ -45,7 +46,7 @@ fn example1() {
         Vec3(10., 4., 2.),
         4.,
         Bxdf::Specular,
-        Vec3(0.7, 0., 0.7),
+        Texture::set_solid(Vec3(0.7, 0., 0.7)),
         freshid,
     );
 
@@ -53,7 +54,7 @@ fn example1() {
         Vec3(1., 2., 7.),
         2.,
         Bxdf::Lambertian,
-        Vec3(0.7, 0.7, 0.),
+        Texture::set_solid(Vec3(0.5, 0.7, 0.)),
         freshid,
     );
 
@@ -61,7 +62,7 @@ fn example1() {
         Vec3(-10., 3., 5.),
         3.,
         Bxdf::Lambertian,
-        Vec3(0., 0.7, 0.7),
+        Texture::set_solid(Vec3(0., 0.7, 0.7)),
         freshid,
     );
 
@@ -69,7 +70,7 @@ fn example1() {
         Vec3(-4., 1., 12.),
         1.,
         Bxdf::Dielectric { ior: 1.5 },
-        Vec3(0.9, 0.9, 0.9),
+        Texture::set_solid(Vec3::new(0.9)),
         freshid,
     );
 
@@ -94,88 +95,7 @@ fn example1() {
     let _ = render(&camera, &scene);
 }
 
-fn example2() {
-    let freshid = &mut FreshId::new();
-
-    let plane = Object::set_rect(
-        Axis::Y,
-        Vec3(-100., 0., -100.),
-        Vec3(100., 0., 100.),
-        Bxdf::Lambertian,
-        Vec3(0.3, 0.3, 0.3),
-        freshid,
-    );
-
-    let rect = Object::set_rect(
-        Axis::Z,
-        Vec3(-15., 0., -15.),
-        Vec3(15., 15., -15.),
-        Bxdf::Light,
-        Vec3(20., 20., 20.),
-        freshid,
-    );
-
-    let sphere1 = Object::set_sphere(
-        Vec3(0., 7., -5.),
-        7.,
-        Bxdf::Lambertian,
-        Vec3(0.9, 0.3, 0.),
-        freshid,
-    );
-
-    let sphere2 = Object::set_sphere(
-        Vec3(10., 4., 2.),
-        4.,
-        Bxdf::Specular,
-        Vec3(0.7, 0., 0.7),
-        freshid,
-    );
-
-    let sphere3 = Object::set_sphere(
-        Vec3(1., 2., 7.),
-        2.,
-        Bxdf::Lambertian,
-        Vec3(0.7, 0.7, 0.),
-        freshid,
-    );
-
-    let sphere4 = Object::set_sphere(
-        Vec3(-10., 3., 5.),
-        3.,
-        Bxdf::Lambertian,
-        Vec3(0., 0.7, 0.7),
-        freshid,
-    );
-
-    let sphere5 = Object::set_sphere(
-        Vec3(-4., 1., 12.),
-        1.,
-        Bxdf::Dielectric { ior: 1.5 },
-        Vec3(0.9, 0.9, 0.9),
-        freshid,
-    );
-
-    let objects = vec![
-        &plane, &rect, &sphere1, &sphere2, &sphere3, &sphere4, &sphere5,
-    ];
-
-    let camera = PinholeModel::new(
-        Vec3(0., 5., 20.),
-        800,
-        450,
-        40.,
-        Vec3(0., -0.1, -1.).normalize(),
-        16.,
-        4,
-        4,
-    );
-
-    let scene = Scene::new(objects, Vec3::new(0.));
-
-    let _ = render(&camera, &scene);
-}
-
-pub fn example3() {
+pub fn example2() {
     let freshid = &mut FreshId::new();
 
     let rect0 = Object::set_rect(
@@ -183,7 +103,11 @@ pub fn example3() {
         Vec3(-25., 0., 0.),
         Vec3(25., 0., -50.),
         Bxdf::Lambertian,
-        Vec3(1., 1., 1.),
+        Texture::CheckerTex {
+            div: 10,
+            col1: Vec3::new(0.1),
+            col2: Vec3::new(1.),
+        },
         freshid,
     );
     let rect1 = Object::set_rect(
@@ -191,7 +115,7 @@ pub fn example3() {
         Vec3(-25., 50., 0.),
         Vec3(25., 50., -50.),
         Bxdf::Lambertian,
-        Vec3(1., 1., 1.),
+        Texture::set_solid(Vec3::new(1.)),
         freshid,
     );
     let rect2 = Object::set_rect(
@@ -199,7 +123,7 @@ pub fn example3() {
         Vec3(-25., 0., 0.),
         Vec3(-25., 50., -50.),
         Bxdf::Lambertian,
-        Vec3(1., 0.1, 0.1),
+        Texture::set_solid(Vec3(1., 0.1, 0.1)),
         freshid,
     );
     let rect3 = Object::set_rect(
@@ -207,7 +131,7 @@ pub fn example3() {
         Vec3(25., 0., 0.),
         Vec3(25., 50., -50.),
         Bxdf::Lambertian,
-        Vec3(0.1, 1., 0.1),
+        Texture::set_solid(Vec3(0.1, 1., 0.1)),
         freshid,
     );
     let rect4 = Object::set_rect(
@@ -215,7 +139,7 @@ pub fn example3() {
         Vec3(-25., 0., -50.),
         Vec3(25., 50., -50.),
         Bxdf::Lambertian,
-        Vec3(0.1, 0.1, 1.),
+        Texture::set_solid(Vec3(0.1, 0.1, 1.)),
         freshid,
     );
     let rect5 = Object::set_rect(
@@ -223,7 +147,7 @@ pub fn example3() {
         Vec3(-5., 49.99, -20.),
         Vec3(5., 49.99, -30.),
         Bxdf::Light,
-        Vec3(25., 25., 25.),
+        Texture::set_solid(Vec3::new(25.)),
         freshid,
     );
 
@@ -231,7 +155,7 @@ pub fn example3() {
         Vec3(0., 10., -25.),
         10.,
         Bxdf::MicroBtdf { a: 0.5, ior: 1.5 },
-        Vec3::new(1.),
+        Texture::set_solid(Vec3::new(1.)),
         freshid,
     );
 
@@ -260,7 +184,11 @@ pub fn cornel_box() {
         Vec3(-25., 0., 0.),
         Vec3(25., 0., -50.),
         Bxdf::Lambertian,
-        Vec3(1., 1., 1.),
+        Texture::CheckerTex {
+            div: 10,
+            col1: Vec3::new(0.1),
+            col2: Vec3::new(1.),
+        },
         freshid,
     );
     let rect1 = Object::set_rect(
@@ -268,7 +196,7 @@ pub fn cornel_box() {
         Vec3(-25., 50., 0.),
         Vec3(25., 50., -50.),
         Bxdf::Lambertian,
-        Vec3(1., 1., 1.),
+        Texture::set_solid(Vec3::new(1.)),
         freshid,
     );
     let rect2 = Object::set_rect(
@@ -276,7 +204,7 @@ pub fn cornel_box() {
         Vec3(-25., 0., 0.),
         Vec3(-25., 50., -50.),
         Bxdf::Lambertian,
-        Vec3(1., 0.1, 0.1),
+        Texture::set_solid(Vec3(1., 0.1, 0.1)),
         freshid,
     );
     let rect3 = Object::set_rect(
@@ -284,7 +212,7 @@ pub fn cornel_box() {
         Vec3(25., 0., 0.),
         Vec3(25., 50., -50.),
         Bxdf::Lambertian,
-        Vec3(0.1, 1., 0.1),
+        Texture::set_solid(Vec3(0.1, 1.0, 0.1)),
         freshid,
     );
     let rect4 = Object::set_rect(
@@ -292,7 +220,7 @@ pub fn cornel_box() {
         Vec3(-25., 0., -50.),
         Vec3(25., 50., -50.),
         Bxdf::Lambertian,
-        Vec3(1., 1., 1.),
+        Texture::set_solid(Vec3::new(1.)),
         freshid,
     );
     let rect5 = Object::set_rect(
@@ -300,7 +228,7 @@ pub fn cornel_box() {
         Vec3(-5., 49.99, -20.),
         Vec3(5., 49.99, -30.),
         Bxdf::Light,
-        Vec3(25., 25., 25.),
+        Texture::set_solid(Vec3::new(25.)),
         freshid,
     );
 
@@ -340,8 +268,7 @@ pub fn cornel_box() {
 fn main() {
     let start = std::time::Instant::now();
     //example1();
-    //example2();
-    example3();
+    example2();
     //cornel_box();
     let end = start.elapsed();
     println!("{}.{:03}sec", end.as_secs(), end.subsec_nanos() / 1_000_000);

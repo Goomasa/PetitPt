@@ -1,6 +1,7 @@
 use crate::aabb::AABB;
 use crate::random::{FreshId, XorRand};
 use crate::ray::*;
+use crate::texture::Texture;
 use crate::{material::Bxdf, math::*};
 
 #[derive(Clone, Copy)]
@@ -10,12 +11,12 @@ pub enum Axis {
     Z,
 }
 
-pub enum Object {
+pub enum Object<'a> {
     Sphere {
         center: Point3,
         radius: f64,
         bxdf: Bxdf,
-        color: Color,
+        texture: Texture<'a>,
         id: i32,
         bbox: AABB,
     },
@@ -25,7 +26,7 @@ pub enum Object {
         min_p: Point3,
         max_p: Point3,
         bxdf: Bxdf,
-        color: Color,
+        texture: Texture<'a>,
         id: i32,
         bbox: AABB,
     },
@@ -36,25 +37,25 @@ pub enum Object {
         pr: Point3,
         normal: Vec3,
         bxdf: Bxdf,
-        color: Color,
+        texture: Texture<'a>,
         id: i32,
         bbox: AABB,
     },
 }
 
-impl Object {
+impl<'a> Object<'a> {
     pub fn set_sphere(
         center: Point3,
         radius: f64,
         bxdf: Bxdf,
-        color: Color,
+        texture: Texture<'a>,
         freshid: &mut FreshId,
-    ) -> Object {
+    ) -> Object<'a> {
         Object::Sphere {
             center,
             radius,
             bxdf,
-            color,
+            texture,
             id: freshid.gen_id(),
             bbox: AABB {
                 min_p: center - Vec3::new(radius),
@@ -68,9 +69,9 @@ impl Object {
         p: Point3,
         q: Point3,
         bxdf: Bxdf,
-        color: Color,
+        texture: Texture<'a>,
         freshid: &mut FreshId,
-    ) -> Object {
+    ) -> Object<'a> {
         let max_p = Vec3(fmax(p.0, q.0), fmax(p.1, q.1), fmax(p.2, q.2));
         let min_p = Vec3(fmin(p.0, q.0), fmin(p.1, q.1), fmin(p.2, q.2));
 
@@ -79,7 +80,7 @@ impl Object {
             min_p,
             max_p,
             bxdf,
-            color,
+            texture,
             id: freshid.gen_id(),
             bbox: AABB { min_p, max_p }.rev_aabb(),
         }
@@ -90,9 +91,9 @@ impl Object {
         q: Point3,
         r: Point3,
         bxdf: Bxdf,
-        color: Color,
+        texture: Texture<'a>,
         freshid: &mut FreshId,
-    ) -> Object {
+    ) -> Object<'a> {
         let normal = cross(q - p, r - p).normalize();
         let min_p = Vec3(
             fmin(p.0, fmin(q.0, r.0)),
@@ -110,7 +111,7 @@ impl Object {
             pr: r - p,
             normal,
             bxdf,
-            color,
+            texture,
             id: freshid.gen_id(),
             bbox: AABB { min_p, max_p }.rev_aabb(),
         }
@@ -122,16 +123,18 @@ impl Object {
                 center,
                 radius,
                 bxdf,
-                color,
+                texture,
                 id,
                 ..
             } => {
-                if let Some((t, normal)) = hit_sphere(center, radius, ray, record.distance) {
+                if let Some((t, hitpos, normal)) = hit_sphere(center, radius, ray, record.distance)
+                {
                     record.distance = t;
-                    record.pos = ray.org + ray.dir * t;
+                    record.pos = hitpos;
                     record.normal = normal;
                     record.bxdf = *bxdf;
-                    record.color = *color;
+                    let (u, v) = sphere_uv(&hitpos, center);
+                    record.color = texture.get_color(u, v);
                     record.obj_id = *id;
                 }
             }
@@ -140,16 +143,19 @@ impl Object {
                 min_p,
                 max_p,
                 bxdf,
-                color,
+                texture,
                 id,
                 ..
             } => {
-                if let Some((t, normal)) = hit_rect(axis, max_p, min_p, ray, record.distance) {
+                if let Some((t, hitpos, normal, (u, v))) =
+                    hit_rect(axis, max_p, min_p, ray, record.distance)
+                {
                     record.distance = t;
-                    record.pos = ray.org + ray.dir * t;
+                    record.pos = hitpos;
                     record.normal = normal;
                     record.bxdf = *bxdf;
-                    record.color = *color;
+
+                    record.color = texture.get_color(u, v);
                     record.obj_id = *id;
                 }
             }
@@ -159,16 +165,18 @@ impl Object {
                 pr,
                 normal,
                 bxdf,
-                color,
+                texture,
                 id,
                 ..
             } => {
-                if let Some((t, pos)) = hit_triangle(p, pq, pr, normal, ray, record.distance) {
+                if let Some((t, pos, (u, v))) =
+                    hit_triangle(p, pq, pr, normal, ray, record.distance)
+                {
                     record.distance = t;
                     record.pos = pos;
                     record.normal = *normal;
                     record.bxdf = *bxdf;
-                    record.color = *color;
+                    record.color = texture.get_color(u, v);
                     record.obj_id = *id;
                 }
             }
@@ -219,7 +227,20 @@ impl Object {
     }
 }
 
-fn hit_sphere(center: &Point3, radius: &f64, ray: &Ray, max_dist: f64) -> Option<(f64, Vec3)> {
+pub fn sphere_uv(p: &Point3, center: &Point3) -> (f64, f64) {
+    let dir = (*p - *center).normalize();
+    let theta = dir.1.acos();
+    let mut phi = dir.2.atan2(dir.0);
+    phi = if phi < 0. { phi + 2. * PI } else { phi };
+    (phi / (2. * PI), theta / PI)
+}
+
+fn hit_sphere(
+    center: &Point3,
+    radius: &f64,
+    ray: &Ray,
+    max_dist: f64,
+) -> Option<(f64, Point3, Vec3)> {
     //if hit, return (distant,normal)
     let oc = *center - ray.org;
     let oc_dir = dot(oc, ray.dir);
@@ -245,7 +266,7 @@ fn hit_sphere(center: &Point3, radius: &f64, ray: &Ray, max_dist: f64) -> Option
         return None;
     }
 
-    Some((t, (ray.dir * t - oc).normalize()))
+    Some((t, ray.org + ray.dir * t, (ray.dir * t - oc).normalize()))
 }
 
 fn hit_plane(axis: &Axis, pos: &f64, ray: &Ray, max_dist: f64) -> Option<(f64, Vec3)> {
@@ -296,7 +317,7 @@ pub fn hit_rect(
     min_p: &Point3,
     ray: &Ray,
     max_dist: f64,
-) -> Option<(f64, Vec3)> {
+) -> Option<(f64, Point3, Vec3, (f64, f64))> {
     let pos = match axis {
         Axis::X => max_p.0,
         Axis::Y => max_p.1,
@@ -305,6 +326,8 @@ pub fn hit_rect(
 
     if let Some((t, normal)) = hit_plane(&axis, &pos, ray, max_dist) {
         let hitpoint = ray.org + ray.dir * t;
+        let d = *max_p - *min_p;
+        let v = hitpoint - *min_p;
         match axis {
             Axis::X => {
                 if hitpoint.1 > max_p.1
@@ -314,7 +337,7 @@ pub fn hit_rect(
                 {
                     return None;
                 } else {
-                    return Some((t, normal));
+                    return Some((t, hitpoint, normal, (1. - v.2 / d.2, 1. - v.1 / d.1)));
                 }
             }
             Axis::Y => {
@@ -325,7 +348,7 @@ pub fn hit_rect(
                 {
                     return None;
                 } else {
-                    return Some((t, normal));
+                    return Some((t, hitpoint, normal, (v.0 / d.0, v.2 / d.2)));
                 }
             }
             Axis::Z => {
@@ -336,7 +359,7 @@ pub fn hit_rect(
                 {
                     return None;
                 } else {
-                    return Some((t, normal));
+                    return Some((t, hitpoint, normal, (v.0 / d.0, 1. - v.1 / d.1)));
                 }
             }
         }
@@ -351,7 +374,7 @@ pub fn hit_triangle(
     normal: &Vec3,
     ray: &Ray,
     max_dist: f64,
-) -> Option<(f64, Point3)> {
+) -> Option<(f64, Point3, (f64, f64))> {
     let n_d = dot(*normal, ray.dir);
     if n_d == 0. {
         return None;
@@ -370,7 +393,7 @@ pub fn hit_triangle(
         return None;
     }
 
-    Some((t, pos))
+    Some((t, pos, (u, v)))
 }
 
 pub fn sample_sphere(org: Point3, center: &Point3, radius: f64, rand: &mut XorRand) -> (f64, Vec3) {
