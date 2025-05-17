@@ -73,8 +73,8 @@ pub fn refraction_dir(
     } else {
         1. - dot(refraction_dir, -normal)
     };
-    let fresnel_reflectance = r0 + (1. - r0) * c.clamp(0., 1.).powi(5);
-    let reflection_prob = 0.25 + 0.5 * fresnel_reflectance;
+    let fresnel_reflectance = r0 + (1. - r0) * c.powi(5);
+    let reflection_prob = fresnel_reflectance;
 
     if rand.next01() < reflection_prob {
         (false, reflection_dir, fresnel_reflectance, reflection_prob)

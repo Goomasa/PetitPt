@@ -3,6 +3,7 @@ use std::io;
 use crate::{
     material::*,
     math::{dot, max_elm, multiply, Color, Vec3, EPS, PI},
+    object::sphere_uv,
     random::XorRand,
     ray::{HitRecord, Ray},
     scene::Scene,
@@ -26,7 +27,9 @@ pub fn radiance(scene: &Scene, ray: Ray, rand: &mut XorRand) -> Color {
     for time in 0.. {
         record = HitRecord::new();
         if !scene.intersect(&now_ray, &mut record, &scene.bvh_tree[0]) {
-            rad = rad + multiply(throughput, scene.background) / pdf;
+            let (u, v) = sphere_uv(&now_ray.dir, &Vec3::new(0.));
+            let background = scene.background.get_color(u, v);
+            rad = rad + multiply(throughput, background) / pdf;
             break;
         }
 
@@ -113,7 +116,7 @@ pub fn radiance(scene: &Scene, ray: Ray, rand: &mut XorRand) -> Color {
                     dir: out_dir,
                 };
 
-                throughput = multiply(throughput, record.color) * fresnel * nnt;
+                throughput = multiply(throughput, record.color) * fresnel * nnt * nnt;
                 pdf *= refl_prob;
                 brdf_sample_pdf = 1.;
             }

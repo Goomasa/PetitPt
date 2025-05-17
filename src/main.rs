@@ -6,7 +6,7 @@ use polygon::read_ply;
 use random::FreshId;
 use render::render;
 use scene::Scene;
-use texture::Texture;
+use texture::{load_hdr, Texture};
 
 mod aabb;
 mod bvh;
@@ -80,7 +80,7 @@ fn example1() {
         800,
         450,
         Vec3(0., 0., -1.).normalize(),
-        Vec3(0., 3., 86.),
+        Vec3(0., 5., 86.),
         40.,
         2.,
         40.,
@@ -90,7 +90,7 @@ fn example1() {
         8,
     );
 
-    let scene = Scene::new(objects, Vec3::new(0.9));
+    let scene = Scene::new(objects, Texture::set_solid(Vec3::new(0.7)));
 
     let _ = render(&camera, &scene);
 }
@@ -103,11 +103,7 @@ pub fn example2() {
         Vec3(-25., 0., 0.),
         Vec3(25., 0., -50.),
         Bxdf::Lambertian,
-        Texture::CheckerTex {
-            div: 10,
-            col1: Vec3::new(0.1),
-            col2: Vec3::new(1.),
-        },
+        Texture::set_checker(10, Vec3::new(0.1), Vec3::new(1.)),
         freshid,
     );
     let rect1 = Object::set_rect(
@@ -154,7 +150,7 @@ pub fn example2() {
     let sphere = Object::set_sphere(
         Vec3(0., 10., -25.),
         10.,
-        Bxdf::MicroBtdf { a: 0.5, ior: 1.5 },
+        Bxdf::MicroBtdf { a: 0.3, ior: 1.5 },
         Texture::set_solid(Vec3::new(1.)),
         freshid,
     );
@@ -171,7 +167,76 @@ pub fn example2() {
         4,
     );
 
-    let scene = Scene::new(objects, Vec3::new(0.));
+    let scene = Scene::new(objects, Texture::set_solid(Vec3::new(0.)));
+
+    let _ = render(&camera, &scene);
+}
+
+pub fn example3() {
+    let freshid = &mut FreshId::new();
+    let (data, px_w, px_h) = load_hdr("assets/kloofendal_48d_partly_cloudy_puresky_1k.hdr");
+
+    let rect = Object::set_rect(
+        Axis::Y,
+        Vec3(-30., 0., 0.),
+        Vec3(30., 0., 60.),
+        Bxdf::Lambertian,
+        Texture::set_checker(15, Vec3::new(0.1), Vec3::new(0.5)),
+        freshid,
+    );
+
+    let sphere0 = Object::set_sphere(
+        Vec3(-18., 5., 30.),
+        4.,
+        Bxdf::MicroBrdf { ax: 0., ay: 0. },
+        Texture::set_solid(Vec3::new(1.)),
+        freshid,
+    );
+
+    let sphere1 = Object::set_sphere(
+        Vec3(-6., 5., 30.),
+        4.,
+        Bxdf::MicroBrdf { ax: 0.3, ay: 0.3 },
+        Texture::set_solid(Vec3::new(1.)),
+        freshid,
+    );
+
+    let sphere2 = Object::set_sphere(
+        Vec3(6., 5., 30.),
+        4.,
+        Bxdf::MicroBrdf { ax: 0.5, ay: 0.1 },
+        Texture::set_solid(Vec3::new(1.)),
+        freshid,
+    );
+
+    let sphere3 = Object::set_sphere(
+        Vec3(18., 5., 30.),
+        4.,
+        Bxdf::MicroBrdf { ax: 0.1, ay: 0.5 },
+        Texture::set_solid(Vec3::new(1.)),
+        freshid,
+    );
+
+    let objects = vec![&rect, &sphere0, &sphere1, &sphere2, &sphere3];
+    let camera = PinholeModel::new(
+        Vec3(0., 10., 70.),
+        800,
+        450,
+        40.,
+        Vec3(0., 0., -1.).normalize(),
+        30.,
+        8,
+        8,
+    );
+
+    let scene = Scene::new(
+        objects,
+        Texture::ImageTex {
+            data: &data,
+            px_w,
+            px_h,
+        },
+    );
 
     let _ = render(&camera, &scene);
 }
@@ -184,11 +249,7 @@ pub fn cornel_box() {
         Vec3(-25., 0., 0.),
         Vec3(25., 0., -50.),
         Bxdf::Lambertian,
-        Texture::CheckerTex {
-            div: 10,
-            col1: Vec3::new(0.1),
-            col2: Vec3::new(1.),
-        },
+        Texture::set_checker(10, Vec3::new(0.1), Vec3::new(1.)),
         freshid,
     );
     let rect1 = Object::set_rect(
@@ -228,7 +289,7 @@ pub fn cornel_box() {
         Vec3(-5., 49.99, -20.),
         Vec3(5., 49.99, -30.),
         Bxdf::Light,
-        Texture::set_solid(Vec3::new(25.)),
+        Texture::set_solid(Vec3::new(30.)),
         freshid,
     );
 
@@ -260,7 +321,7 @@ pub fn cornel_box() {
         4,
     );
 
-    let scene = Scene::new(objects, Vec3::new(0.));
+    let scene = Scene::new(objects, Texture::set_solid(Vec3::new(0.)));
 
     let _ = render(&camera, &scene);
 }
@@ -268,8 +329,9 @@ pub fn cornel_box() {
 fn main() {
     let start = std::time::Instant::now();
     //example1();
-    example2();
-    //cornel_box();
+    //example2();
+    //example3();
+    cornel_box();
     let end = start.elapsed();
     println!("{}.{:03}sec", end.as_secs(), end.subsec_nanos() / 1_000_000);
 }

@@ -7,17 +7,18 @@ use crate::{
     },
     random::XorRand,
     ray::{HitRecord, NeeResult, Ray},
+    texture::Texture,
 };
 
 pub struct Scene<'a> {
     pub objects: Vec<&'a Object<'a>>,
-    pub background: Color,
+    pub background: Texture<'a>,
     pub lights: Vec<&'a Object<'a>>,
     pub bvh_tree: BvhTree,
 }
 
 impl<'a> Scene<'a> {
-    pub fn new(mut objs: Vec<&'a Object>, back: Color) -> Self {
+    pub fn new(mut objs: Vec<&'a Object>, back: Texture<'a>) -> Self {
         let lights = objs
             .clone()
             .into_iter()

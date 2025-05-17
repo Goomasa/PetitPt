@@ -24,7 +24,11 @@ pub fn load_hdr(path: &str) -> (Vec<Color>, usize, usize) {
 
     let mut data = Vec::new();
     for rgb in image.data.iter() {
-        data.push(Vec3(rgb.r as f64, rgb.g as f64, rgb.b as f64));
+        data.push(Vec3(
+            rgb.r.clamp(0., 10.) as f64,
+            rgb.g.clamp(0., 10.) as f64,
+            rgb.b.clamp(0., 10.) as f64,
+        ));
     }
 
     (data, image.width, image.height)
