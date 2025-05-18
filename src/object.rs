@@ -396,7 +396,12 @@ pub fn hit_triangle(
     Some((t, pos, (u, v)))
 }
 
-pub fn sample_sphere(org: Point3, center: &Point3, radius: f64, rand: &mut XorRand) -> (f64, Vec3) {
+pub fn sample_sphere(
+    org: Point3,
+    center: &Point3,
+    radius: f64,
+    rand: &mut XorRand,
+) -> (f64, Vec3, f64) {
     let pc = *center - org;
     let cos_mu = (1. - (radius * radius / pc.length_sq())).sqrt();
 
@@ -414,7 +419,7 @@ pub fn sample_sphere(org: Point3, center: &Point3, radius: f64, rand: &mut XorRa
 
     let dir = u * sin_theta * phi.cos() + v * sin_theta * phi.sin() + w * cos_theta;
     let pdf = 1. / (2. * PI * (1. - cos_mu));
-    (pdf, dir)
+    (pdf, dir, pc.length())
 }
 
 pub fn sample_rect(
@@ -423,7 +428,7 @@ pub fn sample_rect(
     max_p: &Point3,
     min_p: &Point3,
     rand: &mut XorRand,
-) -> (f64, Vec3) {
+) -> (f64, Vec3, f64) {
     let diagnal = *max_p - *min_p;
     let area;
     let normal;
@@ -455,7 +460,7 @@ pub fn sample_rect(
     let l_sq = dir.length_sq();
     dir = dir.normalize();
     let cos_theta = dot(dir, normal).abs();
-    (l_sq / (area * cos_theta), dir)
+    (l_sq / (area * cos_theta), dir, l_sq.sqrt())
 }
 
 pub fn sample_triangle(
@@ -466,7 +471,7 @@ pub fn sample_triangle(
     normal: &Vec3,
     area: f64,
     rand: &mut XorRand,
-) -> (f64, Vec3) {
+) -> (f64, Vec3, f64) {
     let mut r1 = rand.next01();
     let mut r2 = rand.next01();
     if r1 + r2 > 1. {
@@ -479,7 +484,7 @@ pub fn sample_triangle(
     let l_sq = dir.length_sq();
     dir = dir.normalize();
     let cos_theta = dot(dir, *normal).abs();
-    (l_sq / (cos_theta * area), dir)
+    (l_sq / (cos_theta * area), dir, l_sq.sqrt())
 }
 
 pub fn sample_sphere_pdf(org: Point3, center: &Point3, radius: f64) -> f64 {

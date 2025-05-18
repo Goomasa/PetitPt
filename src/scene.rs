@@ -53,27 +53,30 @@ impl<'a> Scene<'a> {
 
     pub fn nee(&self, org: Point3, rand: &mut XorRand) -> NeeResult {
         let mut nee_result = NeeResult::new();
-        let mut record = HitRecord::new();
-        for obj in self.lights.iter() {
-            let (pdf, dir) = match obj {
-                Object::Sphere { center, radius, .. } => sample_sphere(org, center, *radius, rand),
-                Object::Rectangle {
-                    axis, min_p, max_p, ..
-                } => sample_rect(org, axis, max_p, min_p, rand),
-                Object::Triangle {
-                    p, pq, pr, normal, ..
-                } => sample_triangle(org, p, pq, pr, normal, obj.get_area(), rand),
-            };
+        let size = self.lights.len() as u32;
+        let idx = rand.nexti() % size;
+        let obj = self.lights[idx as usize];
 
-            let _ = self.intersect(&Ray { org, dir }, &mut record, &self.bvh_tree[0]);
-            if record.obj_id != obj.get_id() {
-                continue;
-            }
+        let (pdf, dir, dist) = match obj {
+            Object::Sphere { center, radius, .. } => sample_sphere(org, center, *radius, rand),
+            Object::Rectangle {
+                axis, min_p, max_p, ..
+            } => sample_rect(org, axis, max_p, min_p, rand),
+            Object::Triangle {
+                p, pq, pr, normal, ..
+            } => sample_triangle(org, p, pq, pr, normal, obj.get_area(), rand),
+        };
 
-            nee_result.dir = dir;
-            nee_result.color = record.color;
-            nee_result.pdf = pdf;
+        let mut record = HitRecord::init_with_dist(dist + 0.1);
+        let _ = self.intersect(&Ray { org, dir }, &mut record, &self.bvh_tree[0]);
+        if record.obj_id != obj.get_id() {
+            return nee_result;
         }
+
+        nee_result.dir = dir;
+        nee_result.color = record.color;
+        nee_result.pdf = pdf / size as f64;
+
         nee_result
     }
 

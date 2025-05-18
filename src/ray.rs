@@ -26,6 +26,17 @@ impl HitRecord {
             obj_id: -1,
         }
     }
+
+    pub fn init_with_dist(d: f64) -> Self {
+        HitRecord {
+            pos: Vec3::new(0.),
+            normal: Vec3::new(0.),
+            distance: d,
+            color: Vec3::new(0.),
+            bxdf: Bxdf::Light,
+            obj_id: -1,
+        }
+    }
 }
 
 pub struct NeeResult {
