@@ -230,7 +230,7 @@ impl<'a> Object<'a> {
 pub fn sphere_uv(p: &Point3, center: &Point3) -> (f64, f64) {
     let dir = (*p - *center).normalize();
     let theta = dir.1.acos();
-    let mut phi = dir.2.atan2(dir.0);
+    let mut phi = dir.0.atan2(dir.2);
     phi = if phi < 0. { phi + 2. * PI } else { phi };
     (phi / (2. * PI), theta / PI)
 }

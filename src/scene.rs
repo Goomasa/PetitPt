@@ -1,6 +1,6 @@
 use crate::{
     bvh::{construct_bvh, BvhNode, BvhTree},
-    math::{Color, Point3},
+    math::Point3,
     object::{
         sample_rect, sample_rect_pdf, sample_sphere, sample_sphere_pdf, sample_tri_pdf,
         sample_triangle, Object,
@@ -53,8 +53,41 @@ impl<'a> Scene<'a> {
 
     pub fn nee(&self, org: Point3, rand: &mut XorRand) -> NeeResult {
         let mut nee_result = NeeResult::new();
-        let size = self.lights.len() as u32;
+        let mut size = self.lights.len() as u32;
+
+        if let Texture::ImageTex { .. } = self.background {
+            size += 1;
+        }
+
+        if size == 0 {
+            return nee_result;
+        }
+
         let idx = rand.nexti() % size;
+
+        if let Texture::ImageTex {
+            cdf,
+            cdf_row,
+            px_w,
+            px_h,
+            ..
+        } = &self.background
+        {
+            if idx == size - 1 {
+                let (color, dir, pdf) = self
+                    .background
+                    .sample_hdr(cdf, &cdf_row, *px_w, *px_h, rand);
+                if self.intersect(&Ray { org, dir }, &mut HitRecord::new(), &self.bvh_tree[0]) {
+                    return nee_result;
+                }
+
+                nee_result.color = color;
+                nee_result.pdf = pdf / size as f64;
+                nee_result.dir = dir;
+                return nee_result;
+            }
+        }
+
         let obj = self.lights[idx as usize];
 
         let (pdf, dir, dist) = match obj {

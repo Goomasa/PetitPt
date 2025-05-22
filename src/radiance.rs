@@ -1,5 +1,3 @@
-use std::io;
-
 use crate::{
     material::*,
     math::{dot, max_elm, multiply, Color, Vec3, EPS, PI},
@@ -7,6 +5,7 @@ use crate::{
     random::XorRand,
     ray::{HitRecord, Ray},
     scene::Scene,
+    texture::{sample_hdr_pdf, Texture},
 };
 
 const DEPTH: u32 = 6;
@@ -28,8 +27,23 @@ pub fn radiance(scene: &Scene, ray: Ray, rand: &mut XorRand) -> Color {
         record = HitRecord::new();
         if !scene.intersect(&now_ray, &mut record, &scene.bvh_tree[0]) {
             let (u, v) = sphere_uv(&now_ray.dir, &Vec3::new(0.));
+
+            let mis_weight = if let Texture::ImageTex {
+                cdf,
+                cdf_row,
+                px_w,
+                px_h,
+                ..
+            } = &scene.background
+            {
+                let pdf = sample_hdr_pdf(cdf, cdf_row, u, v, *px_w, *px_h);
+                brdf_sample_pdf / (brdf_sample_pdf + pdf)
+            } else {
+                1.
+            };
+
             let background = scene.background.get_color(u, v);
-            rad = rad + multiply(throughput, background) / pdf;
+            rad = rad + multiply(throughput, background) * mis_weight / pdf;
             break;
         }
 
@@ -94,7 +108,7 @@ pub fn radiance(scene: &Scene, ray: Ray, rand: &mut XorRand) -> Color {
                     dir: out_dir,
                 };
                 throughput = multiply(throughput, record.color);
-                brdf_sample_pdf = 1.;
+                brdf_sample_pdf = -1.;
             }
             Bxdf::Dielectric { ior } => {
                 let into = dot(record.normal, now_ray.dir) < 0.;
@@ -118,7 +132,7 @@ pub fn radiance(scene: &Scene, ray: Ray, rand: &mut XorRand) -> Color {
 
                 throughput = multiply(throughput, record.color) * fresnel * nnt * nnt;
                 pdf *= refl_prob;
-                brdf_sample_pdf = 1.;
+                brdf_sample_pdf = -1.;
             }
             Bxdf::MicroBrdf { ax, ay } => {
                 let wi = -now_ray.dir;
@@ -153,7 +167,7 @@ pub fn radiance(scene: &Scene, ray: Ray, rand: &mut XorRand) -> Color {
 
                 throughput = multiply(throughput, fresnel * g1_wo);
                 if ax == 0. || ay == 0. {
-                    brdf_sample_pdf = 1.;
+                    brdf_sample_pdf = -1.;
                 } else {
                     brdf_sample_pdf = vndf;
                 }
@@ -216,7 +230,7 @@ pub fn radiance(scene: &Scene, ray: Ray, rand: &mut XorRand) -> Color {
 
                     throughput = multiply(throughput, record.color) * fresnel * g1_wo;
                     pdf *= refl_prob;
-                    brdf_sample_pdf = vndf;
+                    brdf_sample_pdf = if a == 0. { -1. } else { vndf };
                 } else {
                     let org = record.pos + orienting_normal * 0.00001;
                     now_ray = Ray { org, dir };
@@ -241,7 +255,7 @@ pub fn radiance(scene: &Scene, ray: Ray, rand: &mut XorRand) -> Color {
 
                     throughput = multiply(throughput, record.color) * fresnel * g1_wo;
                     pdf *= refl_prob;
-                    brdf_sample_pdf = vndf;
+                    brdf_sample_pdf = if a == 0. { -1. } else { vndf };
                 }
             }
         }

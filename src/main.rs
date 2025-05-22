@@ -6,7 +6,7 @@ use polygon::read_ply;
 use random::FreshId;
 use render::render;
 use scene::Scene;
-use texture::{load_hdr, Texture};
+use texture::{load_hdr, make_cdf_hdr, Texture};
 
 mod aabb;
 mod bvh;
@@ -175,6 +175,7 @@ pub fn example2() {
 pub fn example3() {
     let freshid = &mut FreshId::new();
     let (data, px_w, px_h) = load_hdr("assets/kloofendal_48d_partly_cloudy_puresky_1k.hdr");
+    let cdf = make_cdf_hdr(&data, px_w, px_h);
 
     let rect = Object::set_rect(
         Axis::Y,
@@ -188,7 +189,7 @@ pub fn example3() {
     let sphere0 = Object::set_sphere(
         Vec3(-18., 5., 30.),
         4.,
-        Bxdf::MicroBrdf { ax: 0., ay: 0. },
+        Bxdf::Specular,
         Texture::set_solid(Vec3::new(1.)),
         freshid,
     );
@@ -196,15 +197,15 @@ pub fn example3() {
     let sphere1 = Object::set_sphere(
         Vec3(-6., 5., 30.),
         4.,
-        Bxdf::MicroBrdf { ax: 0.3, ay: 0.3 },
-        Texture::set_solid(Vec3::new(1.)),
+        Bxdf::Lambertian,
+        Texture::set_solid(Vec3::new(0.7)),
         freshid,
     );
 
     let sphere2 = Object::set_sphere(
         Vec3(6., 5., 30.),
         4.,
-        Bxdf::MicroBrdf { ax: 0.5, ay: 0.1 },
+        Bxdf::MicroBtdf { a: 0.2, ior: 1.5 },
         Texture::set_solid(Vec3::new(1.)),
         freshid,
     );
@@ -212,12 +213,12 @@ pub fn example3() {
     let sphere3 = Object::set_sphere(
         Vec3(18., 5., 30.),
         4.,
-        Bxdf::MicroBrdf { ax: 0.1, ay: 0.5 },
+        Bxdf::MicroBtdf { a: 0.4, ior: 1.5 },
         Texture::set_solid(Vec3::new(1.)),
         freshid,
     );
 
-    let objects = vec![&rect, &sphere0, &sphere1, &sphere2, &sphere3];
+    let objects = vec![&rect, &sphere0, &sphere1];
     let camera = PinholeModel::new(
         Vec3(0., 10., 70.),
         800,
@@ -229,14 +230,7 @@ pub fn example3() {
         8,
     );
 
-    let scene = Scene::new(
-        objects,
-        Texture::ImageTex {
-            data: &data,
-            px_w,
-            px_h,
-        },
-    );
+    let scene = Scene::new(objects, Texture::set_image(&data, &cdf, px_w, px_h));
 
     let _ = render(&camera, &scene);
 }
