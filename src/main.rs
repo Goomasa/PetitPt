@@ -14,8 +14,8 @@ mod camera;
 mod material;
 mod math;
 mod object;
+mod pathtracing;
 mod polygon;
-mod radiance;
 mod random;
 mod ray;
 mod render;
@@ -182,7 +182,7 @@ pub fn example3() {
         Vec3(-30., 0., 0.),
         Vec3(30., 0., 60.),
         Bxdf::Lambertian,
-        Texture::set_checker(15, Vec3::new(0.1), Vec3::new(0.5)),
+        Texture::set_checker(15, Vec3::new(1.), Vec3::new(0.1)),
         freshid,
     );
 
@@ -197,15 +197,15 @@ pub fn example3() {
     let sphere1 = Object::set_sphere(
         Vec3(-6., 5., 30.),
         4.,
-        Bxdf::Lambertian,
-        Texture::set_solid(Vec3::new(0.7)),
+        Bxdf::MicroBrdf { ax: 0.25, ay: 0.25 },
+        Texture::set_solid(Vec3::new(1.)),
         freshid,
     );
 
     let sphere2 = Object::set_sphere(
         Vec3(6., 5., 30.),
         4.,
-        Bxdf::MicroBtdf { a: 0.2, ior: 1.5 },
+        Bxdf::MicroBrdf { ax: 0.5, ay: 0.05 },
         Texture::set_solid(Vec3::new(1.)),
         freshid,
     );
@@ -213,21 +213,21 @@ pub fn example3() {
     let sphere3 = Object::set_sphere(
         Vec3(18., 5., 30.),
         4.,
-        Bxdf::MicroBtdf { a: 0.4, ior: 1.5 },
+        Bxdf::MicroBrdf { ax: 0.05, ay: 0.5 },
         Texture::set_solid(Vec3::new(1.)),
         freshid,
     );
 
-    let objects = vec![&rect, &sphere0, &sphere1];
+    let objects = vec![&rect, &sphere0, &sphere1, &sphere2, &sphere3];
     let camera = PinholeModel::new(
         Vec3(0., 10., 70.),
         800,
         450,
-        40.,
+        300.,
         Vec3(0., 0., -1.).normalize(),
-        30.,
-        8,
-        8,
+        230.,
+        4,
+        4,
     );
 
     let scene = Scene::new(objects, Texture::set_image(&data, &cdf, px_w, px_h));

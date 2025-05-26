@@ -6,7 +6,7 @@ use rayon::prelude::*;
 use crate::{
     camera::Camara,
     math::{gamma_rev, is_valid, Color},
-    radiance::radiance,
+    pathtracing::Pathtracing,
     random::XorRand,
     ray::Ray,
     scene::Scene,
@@ -33,7 +33,8 @@ pub fn render(camera: &impl Camara, scene: &Scene) {
                         let (g_term, org, dir) = camera.setup(u, v as u32, su, sv, &mut rand);
 
                         for _ in 0..spp {
-                            let rad = radiance(scene, Ray { org, dir }, &mut rand) * g_term;
+                            let mut tracer = Pathtracing::new(Ray { org, dir });
+                            let rad = tracer.integrate(scene, &mut rand) * g_term;
                             if !is_valid(&rad) {
                                 continue;
                             }

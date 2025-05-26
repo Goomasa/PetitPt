@@ -133,9 +133,9 @@ pub fn load_hdr(path: &str) -> (Vec<Color>, usize, usize) {
     let mut data = Vec::new();
     for rgb in image.data.iter() {
         data.push(Vec3(
-            rgb.r.clamp(0., 100.) as f64,
-            rgb.g.clamp(0., 100.) as f64,
-            rgb.b.clamp(0., 100.) as f64,
+            rgb.r.clamp(0., 10.) as f64,
+            rgb.g.clamp(0., 10.) as f64,
+            rgb.b.clamp(0., 10.) as f64,
         ));
     }
 
@@ -180,7 +180,7 @@ fn make_cdf_1d(v: &Vec<f64>) -> Vec<f64> {
 fn binary_search(cdf: &Vec<f64>, p: f64) -> usize {
     let mut left: usize = 0;
     let mut right: usize = cdf.len() - 1;
-    let mut id: usize = 0;
+    let mut id: usize;
 
     while left < right {
         id = (left + right) / 2;
