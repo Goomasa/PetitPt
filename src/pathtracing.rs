@@ -20,6 +20,7 @@ pub struct Pathtracing {
     throughput: Vec3,
     rad: Color,
     brdf_sample_pdf: f64,
+    ior_stack: Vec<(i32, f64)>,
 }
 
 impl Pathtracing {
@@ -32,6 +33,7 @@ impl Pathtracing {
             throughput: Vec3::new(1.),
             rad: Vec3::new(0.),
             brdf_sample_pdf: -1.,
+            ior_stack: vec![(-1, 1.)],
         }
     }
 
@@ -79,26 +81,55 @@ impl Pathtracing {
         self.brdf_sample_pdf = sample_lambert_pdf(&dir, &self.orienting_normal);
     }
 
-    fn trace_specular(&mut self) {
+    fn trace_specular(&mut self, cior: &Color, k: &Color) {
         let out_dir = reflection_dir(self.orienting_normal, self.now_ray.dir);
         self.now_ray = Ray {
             org: self.record.pos + self.orienting_normal * 0.00001,
             dir: out_dir,
         };
-        self.throughput = multiply(self.throughput, self.record.color);
+
+        let fresnel = if cior.0 < 0. {
+            fr_dielectric_col(&self.record.color, &out_dir, &self.orienting_normal)
+        } else {
+            fr_conductor(cior, k, &out_dir, &self.orienting_normal)
+        };
+        self.throughput = multiply(self.throughput, fresnel);
         self.brdf_sample_pdf = -1.;
     }
 
-    fn trace_dielectric(&mut self, ior: f64, rand: &mut XorRand) {
-        let into = dot(self.record.normal, self.now_ray.dir) < 0.;
-        let (is_refract, out_dir, fresnel, refl_prob) =
-            refraction_dir(into, ior, self.orienting_normal, self.now_ray.dir, rand);
+    fn trace_dielectric(&mut self, ior_mat: f64, rand: &mut XorRand) {
+        let (id, ior_env) = self.ior_stack[self.ior_stack.len() - 1];
+        let into = id == -1; // TODO: set bxdf-id?
+
+        let ior_env = if into {
+            ior_env
+        } else {
+            self.ior_stack[self.ior_stack.len() - 2].1
+        };
+
+        //let ior_env = 1.;
+        //let into = dot(self.record.normal, self.now_ray.dir) < 0.;
+
+        let (is_refract, out_dir, fresnel, refl_prob) = refraction_dir(
+            into,
+            ior_env,
+            ior_mat,
+            self.orienting_normal,
+            self.now_ray.dir,
+            rand,
+        );
 
         let new_org;
         let nnt;
         if is_refract {
             new_org = self.record.pos - self.orienting_normal * 0.00001;
-            nnt = if into { 1. / ior } else { ior };
+            if into {
+                nnt = ior_env / ior_mat;
+                self.ior_stack.push((self.record.obj_id, ior_mat));
+            } else {
+                nnt = ior_mat / ior_env;
+                let _ = self.ior_stack.pop();
+            }
         } else {
             new_org = self.record.pos + self.orienting_normal * 0.00001;
             nnt = 1.;
@@ -114,13 +145,25 @@ impl Pathtracing {
         self.brdf_sample_pdf = -1.;
     }
 
-    fn trace_microbrdf(&mut self, scene: &Scene, rand: &mut XorRand, ax: f64, ay: f64) {
+    fn trace_microbrdf(
+        &mut self,
+        scene: &Scene,
+        rand: &mut XorRand,
+        ax: f64,
+        ay: f64,
+        cior: &Color,
+        k: &Color,
+    ) {
         let wi = -self.now_ray.dir;
         let vn = sample_ggx_vndf(&self.orienting_normal, &wi, ax, ay, rand);
         let dir = reflection_dir(vn, -wi);
         let alpha_sq = ggx_alpha2(ax, ay, &vn, &self.orienting_normal);
         let g1_wo = shadow_mask_fn(alpha_sq, &dir, &self.orienting_normal);
-        let fresnel = f_dielectric_col(&self.record.color, &wi, &vn);
+        let fresnel = if cior.0 < 0. {
+            fr_dielectric_col(&self.record.color, &dir, &vn)
+        } else {
+            fr_conductor(cior, k, &dir, &vn)
+        };
 
         let org = self.record.pos + self.orienting_normal * 0.00001;
         self.now_ray = Ray { org, dir };
@@ -139,7 +182,11 @@ impl Pathtracing {
 
             let g1_nee_wo = shadow_mask_fn(alpha_sq, &nee_result.dir, &self.orienting_normal);
             let mis_weight = 1. / (nee_result.pdf + nee_vndf);
-            let nee_fresnel = f_dielectric_col(&self.record.color, &wi, &nee_vn);
+            let nee_fresnel = if cior.0 < 0. {
+                fr_dielectric_col(&self.record.color, &nee_result.dir, &nee_vn)
+            } else {
+                fr_conductor(cior, k, &nee_result.dir, &nee_vn)
+            };
             let brdf = nee_fresnel * nee_vndf * g1_nee_wo;
             self.rad = self.rad
                 + multiply(nee_result.color, multiply(self.throughput, brdf)) * mis_weight
@@ -154,14 +201,22 @@ impl Pathtracing {
         }
     }
 
-    fn trace_microbtdf(&mut self, scene: &Scene, rand: &mut XorRand, a: f64, ior: f64) {
+    fn trace_microbtdf(&mut self, scene: &Scene, rand: &mut XorRand, a: f64, ior_mat: f64) {
         let wi = -self.now_ray.dir;
         let vn = sample_ggx_vndf(&self.orienting_normal, &wi, a, a, rand);
         let alpha_sq = a * a;
 
-        let into = dot(self.record.normal, self.now_ray.dir) < 0.;
+        let (id, ior_env) = self.ior_stack[self.ior_stack.len() - 1];
+        let into = id == -1;
+
+        let ior_env = if into {
+            ior_env
+        } else {
+            self.ior_stack[self.ior_stack.len() - 2].1
+        };
+
         let (is_refract, dir, fresnel, refl_prob) =
-            refraction_dir(into, ior, vn, self.now_ray.dir, rand);
+            refraction_dir(into, ior_env, ior_mat, vn, self.now_ray.dir, rand);
 
         let g1_wo = shadow_mask_fn(alpha_sq, &dir, &self.orienting_normal);
         let g1_wi = shadow_mask_fn(alpha_sq, &wi, &self.orienting_normal);
@@ -172,10 +227,13 @@ impl Pathtracing {
             let org = self.record.pos - self.orienting_normal * 0.00001;
             self.now_ray = Ray { org, dir };
 
-            let ja = if into {
-                micro_btdf_j(1., ior, &wi, &dir, &vn)
+            let ja;
+            if into {
+                ja = micro_btdf_j(ior_env, ior_mat, &wi, &dir, &vn);
+                self.ior_stack.push((self.record.obj_id, ior_mat));
             } else {
-                micro_btdf_j(ior, 1., &wi, &dir, &vn)
+                ja = micro_btdf_j(ior_mat, ior_env, &wi, &dir, &vn);
+                let _ = self.ior_stack.pop();
             };
 
             let vndf = g1_wi * dot(wi, vn) * d_vn * ja / dot_wi_n;
@@ -185,11 +243,11 @@ impl Pathtracing {
                 let nee_wh;
                 let ja;
                 if into {
-                    nee_wh = -(wi + nee_result.dir * ior).normalize();
-                    ja = micro_btdf_j(1., ior, &wi, &nee_result.dir, &nee_wh);
+                    nee_wh = -(wi + nee_result.dir * ior_mat).normalize();
+                    ja = micro_btdf_j(ior_env, ior_mat, &wi, &nee_result.dir, &nee_wh);
                 } else {
-                    nee_wh = -(wi * ior + nee_result.dir).normalize();
-                    ja = micro_btdf_j(ior, 1., &wi, &nee_result.dir, &nee_wh);
+                    nee_wh = -(wi * ior_mat + nee_result.dir).normalize();
+                    ja = micro_btdf_j(ior_mat, ior_env, &wi, &nee_result.dir, &nee_wh);
                 }
 
                 if dot(self.orienting_normal, nee_wh) > EPS {
@@ -198,7 +256,8 @@ impl Pathtracing {
                     let d_nee_vn = ggx_normal_df(alpha_sq, a, a, &self.orienting_normal, &nee_wh);
                     let nee_vndf = g1_wi * dot(wi, nee_wh) * d_nee_vn * ja / dot_wi_n;
                     let mis_weight = 1. / (nee_result.pdf + nee_vndf);
-                    let nee_fresnel = f_dielectric_ior(ior, into, &nee_result.dir, &nee_wh);
+                    let nee_fresnel =
+                        fr_dielectric_ior(into, ior_env, ior_mat, &nee_result.dir, &nee_wh);
                     let nee_btdf = (1. - nee_fresnel) * g1_nee_wo * nee_vndf * dot(wi, nee_wh);
                     self.rad = self.rad
                         + multiply(
@@ -227,7 +286,7 @@ impl Pathtracing {
 
                 let g1_nee_wo = shadow_mask_fn(alpha_sq, &nee_result.dir, &self.orienting_normal);
                 let mis_weight = 1. / (nee_result.pdf + nee_vndf);
-                let nee_fresnel = f_dielectric_col(&self.record.color, &wi, &nee_vn);
+                let nee_fresnel = fr_dielectric_col(&self.record.color, &nee_result.dir, &nee_vn);
                 let brdf = nee_fresnel * nee_vndf * g1_nee_wo;
                 self.rad = self.rad
                     + multiply(nee_result.color, multiply(self.throughput, brdf)) * mis_weight
@@ -285,14 +344,14 @@ impl Pathtracing {
                 Bxdf::Lambertian => {
                     self.trace_lambertian(scene, rand);
                 }
-                Bxdf::Specular => {
-                    self.trace_specular();
+                Bxdf::Specular { cior, k } => {
+                    self.trace_specular(&cior, &k);
                 }
                 Bxdf::Dielectric { ior } => {
                     self.trace_dielectric(ior, rand);
                 }
-                Bxdf::MicroBrdf { ax, ay } => {
-                    self.trace_microbrdf(scene, rand, ax, ay);
+                Bxdf::MicroBrdf { ax, ay, cior, k } => {
+                    self.trace_microbrdf(scene, rand, ax, ay, &cior, &k);
                 }
                 Bxdf::MicroBtdf { a, ior } => {
                     self.trace_microbtdf(scene, rand, a, ior);

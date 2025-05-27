@@ -9,6 +9,7 @@ A tiny pathtracer written in Rust
 - linked_hash_map: https://github.com/contain-rs/linked-hash-map
 - rayon: https://github.com/rayon-rs/rayon
 - hdrldr: https://github.com/TechPriest/hdrldr
+- num-complex: https://github.com/rust-num/num-complex
 
 ## Gallery
 
@@ -34,3 +35,4 @@ Stanford bunny:
 - https://qiita.com/omochi64/items/9336f57118ba918f82ec
 - Eric Heitz, Unity Technologies, Sampling the GGX Distribution of Visible Normals, Journal of Computer Graphics Techniques
 , Vol. 7, No. 4, 2018
+- https://sato-gallery.com/education/el/slide_hikari03.pdf

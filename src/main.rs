@@ -45,7 +45,7 @@ fn example1() {
     let sphere2 = Object::set_sphere(
         Vec3(10., 4., 2.),
         4.,
-        Bxdf::Specular,
+        Bxdf::set_spec_di(),
         Texture::set_solid(Vec3(0.7, 0., 0.7)),
         freshid,
     );
@@ -97,83 +97,6 @@ fn example1() {
 
 pub fn example2() {
     let freshid = &mut FreshId::new();
-
-    let rect0 = Object::set_rect(
-        Axis::Y,
-        Vec3(-25., 0., 0.),
-        Vec3(25., 0., -50.),
-        Bxdf::Lambertian,
-        Texture::set_checker(10, Vec3::new(0.1), Vec3::new(1.)),
-        freshid,
-    );
-    let rect1 = Object::set_rect(
-        Axis::Y,
-        Vec3(-25., 50., 0.),
-        Vec3(25., 50., -50.),
-        Bxdf::Lambertian,
-        Texture::set_solid(Vec3::new(1.)),
-        freshid,
-    );
-    let rect2 = Object::set_rect(
-        Axis::X,
-        Vec3(-25., 0., 0.),
-        Vec3(-25., 50., -50.),
-        Bxdf::Lambertian,
-        Texture::set_solid(Vec3(1., 0.1, 0.1)),
-        freshid,
-    );
-    let rect3 = Object::set_rect(
-        Axis::X,
-        Vec3(25., 0., 0.),
-        Vec3(25., 50., -50.),
-        Bxdf::Lambertian,
-        Texture::set_solid(Vec3(0.1, 1., 0.1)),
-        freshid,
-    );
-    let rect4 = Object::set_rect(
-        Axis::Z,
-        Vec3(-25., 0., -50.),
-        Vec3(25., 50., -50.),
-        Bxdf::Lambertian,
-        Texture::set_solid(Vec3(0.1, 0.1, 1.)),
-        freshid,
-    );
-    let rect5 = Object::set_rect(
-        Axis::Y,
-        Vec3(-5., 49.99, -20.),
-        Vec3(5., 49.99, -30.),
-        Bxdf::Light,
-        Texture::set_solid(Vec3::new(25.)),
-        freshid,
-    );
-
-    let sphere = Object::set_sphere(
-        Vec3(0., 10., -25.),
-        10.,
-        Bxdf::MicroBtdf { a: 0.3, ior: 1.5 },
-        Texture::set_solid(Vec3::new(1.)),
-        freshid,
-    );
-
-    let objects = vec![&rect0, &rect1, &rect2, &rect3, &rect4, &rect5, &sphere];
-    let camera = PinholeModel::new(
-        Vec3(0., 25., 55.),
-        800,
-        600,
-        40.,
-        Vec3(0., 0., -1.).normalize(),
-        30.,
-        4,
-        4,
-    );
-
-    let scene = Scene::new(objects, Texture::set_solid(Vec3::new(0.)));
-
-    let _ = render(&camera, &scene);
-}
-
-pub fn example3() {
-    let freshid = &mut FreshId::new();
     let (data, px_w, px_h) = load_hdr("assets/kloofendal_48d_partly_cloudy_puresky_1k.hdr");
     let cdf = make_cdf_hdr(&data, px_w, px_h);
 
@@ -189,7 +112,7 @@ pub fn example3() {
     let sphere0 = Object::set_sphere(
         Vec3(-18., 5., 30.),
         4.,
-        Bxdf::Specular,
+        Bxdf::set_spec_di(),
         Texture::set_solid(Vec3::new(1.)),
         freshid,
     );
@@ -197,7 +120,7 @@ pub fn example3() {
     let sphere1 = Object::set_sphere(
         Vec3(-6., 5., 30.),
         4.,
-        Bxdf::MicroBrdf { ax: 0.25, ay: 0.25 },
+        Bxdf::Dielectric { ior: 1.5 },
         Texture::set_solid(Vec3::new(1.)),
         freshid,
     );
@@ -205,7 +128,7 @@ pub fn example3() {
     let sphere2 = Object::set_sphere(
         Vec3(6., 5., 30.),
         4.,
-        Bxdf::MicroBrdf { ax: 0.5, ay: 0.05 },
+        Bxdf::MicroBtdf { a: 0.1, ior: 1.5 },
         Texture::set_solid(Vec3::new(1.)),
         freshid,
     );
@@ -213,7 +136,7 @@ pub fn example3() {
     let sphere3 = Object::set_sphere(
         Vec3(18., 5., 30.),
         4.,
-        Bxdf::MicroBrdf { ax: 0.05, ay: 0.5 },
+        Bxdf::set_microbrdf_co(0.05, 0.5, Vec3(0.18, 1.45, 1.53), Vec3(3.07, 1.97, 1.92)),
         Texture::set_solid(Vec3::new(1.)),
         freshid,
     );
@@ -283,7 +206,15 @@ pub fn cornel_box() {
         Vec3(-5., 49.99, -20.),
         Vec3(5., 49.99, -30.),
         Bxdf::Light,
-        Texture::set_solid(Vec3::new(30.)),
+        Texture::set_solid(Vec3::new(50.)),
+        freshid,
+    );
+
+    let sphere = Object::set_sphere(
+        Vec3(15., 7., -13.),
+        7.,
+        Bxdf::set_microbrdf_co(0.5, 0.1, Vec3(0.18, 1.45, 1.53), Vec3(3.07, 1.97, 1.92)),
+        Texture::set_solid(Vec3::new(1.)),
         freshid,
     );
 
@@ -292,18 +223,18 @@ pub fn cornel_box() {
     //http://graphics.stanford.edu/data/3Dscanrep/
     let polygon = read_ply(
         "assets/bun_zipper_res4.ply",
-        Vec3(0.1, 0.1, 1.0),
-        Bxdf::Lambertian,
+        Vec3(0.5, 0.5, 1.0),
+        Bxdf::MicroBtdf { a: 0.05, ior: 1.5 },
         200.,
-        Vec3(5., -7.5, -20.),
+        Vec3(-3., -7.5, -25.),
         freshid,
     );
 
-    let mut objects = vec![&rect0, &rect1, &rect2, &rect3, &rect4, &rect5];
+    let mut objects = vec![&rect0, &rect1, &rect2, &rect3, &rect4, &rect5, &sphere];
     for obj in polygon.iter() {
         objects.push(obj);
     }
-
+    /*
     let camera = PinholeModel::new(
         Vec3(0., 25., 55.),
         800,
@@ -311,10 +242,23 @@ pub fn cornel_box() {
         40.,
         Vec3(0., 0., -1.).normalize(),
         30.,
-        4,
-        4,
+        2,
+        2,
     );
-
+    */
+    let camera = LensModel::new(
+        800,
+        600,
+        Vec3(0., 0., -1.).normalize(),
+        Vec3(0., 25., 120.),
+        40.,
+        2.,
+        40.,
+        100.,
+        80.,
+        2,
+        2,
+    );
     let scene = Scene::new(objects, Texture::set_solid(Vec3::new(0.)));
 
     let _ = render(&camera, &scene);
@@ -324,7 +268,6 @@ fn main() {
     let start = std::time::Instant::now();
     //example1();
     //example2();
-    //example3();
     cornel_box();
     let end = start.elapsed();
     println!("{}.{:03}sec", end.as_secs(), end.subsec_nanos() / 1_000_000);

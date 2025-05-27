@@ -1,3 +1,6 @@
+use num_complex::Complex;
+// using crate "num-complex", https://github.com/rust-num/num-complex
+
 use crate::{
     math::{cross, dot, fmax, Color, Vec3, EPS, PI},
     random::XorRand,
@@ -6,11 +9,24 @@ use crate::{
 #[derive(Clone, Copy)]
 pub enum Bxdf {
     Lambertian,
-    Specular,
-    Dielectric { ior: f64 },
+    Specular {
+        cior: Color,
+        k: Color,
+    },
+    Dielectric {
+        ior: f64,
+    },
     Light,
-    MicroBrdf { ax: f64, ay: f64 },
-    MicroBtdf { a: f64, ior: f64 },
+    MicroBrdf {
+        ax: f64,
+        ay: f64,
+        cior: Color,
+        k: Color,
+    },
+    MicroBtdf {
+        a: f64,
+        ior: f64,
+    },
 }
 
 impl Bxdf {
@@ -19,6 +35,30 @@ impl Bxdf {
             Self::Light => true,
             _ => false,
         }
+    }
+
+    pub fn set_spec_di() -> Self {
+        Self::Specular {
+            cior: Vec3::new(-1.),
+            k: Vec3::new(-1.),
+        }
+    }
+
+    pub fn set_spec_co(cior: Color, k: Color) -> Self {
+        Self::Specular { cior, k }
+    }
+
+    pub fn set_microbrdf_di(ax: f64, ay: f64) -> Self {
+        Self::MicroBrdf {
+            ax,
+            ay,
+            cior: Vec3::new(-1.),
+            k: Vec3::new(-1.),
+        }
+    }
+
+    pub fn set_microbrdf_co(ax: f64, ay: f64, cior: Color, k: Color) -> Self {
+        Self::MicroBrdf { ax, ay, cior, k }
     }
 }
 
@@ -49,14 +89,15 @@ pub fn reflection_dir(normal: Vec3, in_dir: Vec3) -> Vec3 {
 
 pub fn refraction_dir(
     into: bool,
-    ior: f64,
+    ior_i: f64,
+    ior_t: f64,
     normal: Vec3,
     in_dir: Vec3,
     rand: &mut XorRand,
 ) -> (bool, Vec3, f64, f64) {
     //return (is_refract, new_dir, fresnel, prob)
     let reflection_dir = reflection_dir(normal, in_dir);
-    let nnt = if into { 1. / ior } else { ior };
+    let nnt = if into { ior_i / ior_t } else { ior_t / ior_i };
     let ddn = dot(in_dir, normal);
     let cos2t = 1. - nnt * nnt * (1. - ddn * ddn);
 
@@ -65,8 +106,8 @@ pub fn refraction_dir(
     }
 
     let refraction_dir = (-normal * (cos2t.sqrt()) + (in_dir - normal * ddn) * nnt).normalize();
-    let a = ior - 1.;
-    let b = ior + 1.;
+    let a = ior_t - ior_i;
+    let b = ior_t + ior_i;
     let r0 = (a * a) / (b * b);
     let c = if into {
         1. + ddn
@@ -136,13 +177,13 @@ pub fn ggx_alpha2(ax: f64, ay: f64, wi: &Vec3, normal: &Vec3) -> f64 {
     ax * ax * cos_phi_sq + ay * ay * (1. - cos_phi_sq)
 }
 
-pub fn f_dielectric_col(f0: &Color, wi: &Vec3, vn: &Vec3) -> Color {
+pub fn fr_dielectric_col(f0: &Color, wi: &Vec3, vn: &Vec3) -> Color {
     *f0 + (Vec3::new(1.) - *f0) * (1. - dot(*wi, *vn)).clamp(0., 1.).powf(5.)
 }
 
-pub fn f_dielectric_ior(ior: f64, into: bool, wo: &Vec3, vn: &Vec3) -> f64 {
-    let a = ior - 1.;
-    let b = ior + 1.;
+pub fn fr_dielectric_ior(into: bool, ior_i: f64, ior_t: f64, wo: &Vec3, vn: &Vec3) -> f64 {
+    let a = ior_i - ior_t;
+    let b = ior_i + ior_t;
     let r0 = (a * a) / (b * b);
     let c = if into {
         1. + dot(*wo, -*vn)
@@ -151,6 +192,28 @@ pub fn f_dielectric_ior(ior: f64, into: bool, wo: &Vec3, vn: &Vec3) -> f64 {
     };
 
     r0 + (1. - r0) * c.powf(5.)
+}
+
+pub fn fr_conductor(cior: &Color, k: &Color, wi: &Vec3, vn: &Vec3) -> Color {
+    let cos_theta = dot(*wi, *vn);
+    let sin_theta = (1. - cos_theta * cos_theta).sqrt();
+    let cior = [cior.0, cior.1, cior.2];
+    let k = [k.0, k.1, k.2];
+    let mut refl = [0.; 3];
+
+    for i in 0..2 {
+        let n_complex = Complex::new(cior[i], k[i]);
+        let sin_theta_i_sq = sin_theta * sin_theta;
+
+        let n_complex_sq = n_complex * n_complex;
+        let sqrt_term = (n_complex_sq - Complex::new(sin_theta_i_sq, 0.0)).sqrt();
+
+        let rs =
+            (Complex::new(cos_theta, 0.0) - sqrt_term) / (Complex::new(cos_theta, 0.0) + sqrt_term);
+        let rs_reflectance = rs.norm_sqr();
+        refl[i] = rs_reflectance;
+    }
+    Vec3(refl[0], refl[1], refl[2])
 }
 
 pub fn ggx_normal_df(alpha_sq: f64, ax: f64, ay: f64, normal: &Vec3, vn: &Vec3) -> f64 {
