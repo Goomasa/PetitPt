@@ -2,6 +2,15 @@
 
 A tiny pathtracer written in Rust
 
+## Features
+
+- Unidirectional pathtracing
+- Ideal diffuse and specular
+- Microfacet BRDF/BTDF (GGX)
+- NEE (object, IBL)
+- BVH
+- Depth of field
+
 ## Using crates
 
 - bmp: https://github.com/sondrele/rust-bmp
@@ -13,11 +22,7 @@ A tiny pathtracer written in Rust
 
 ## Gallery
 
-![Image1](images/petitpt_dof.jpg)
-
-![Image2](images/petitpt_mr.jpg)
-
-![Image3](images/petitpt_bunny.jpg)
+![Image](images/petitpt_bunny.jpg)
 
 Stanford bunny: 
 

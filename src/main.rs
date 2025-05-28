@@ -254,10 +254,10 @@ pub fn cornel_box() {
         40.,
         2.,
         40.,
+        96.,
         100.,
-        80.,
-        2,
-        2,
+        4,
+        4,
     );
     let scene = Scene::new(objects, Texture::set_solid(Vec3::new(0.)));
 
