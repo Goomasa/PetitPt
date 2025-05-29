@@ -25,7 +25,7 @@ impl<'a> Scene<'a> {
             .filter(|obj| obj.get_bxdf().is_light())
             .collect();
 
-        objs.sort_by(|o1, o2| o1.get_id().cmp(&o2.get_id()));
+        objs.sort_by(|o1, o2| o1.get_obj_id().cmp(&o2.get_obj_id()));
         let bvh_tree = construct_bvh(&objs);
 
         Scene {
@@ -102,7 +102,7 @@ impl<'a> Scene<'a> {
 
         let mut record = HitRecord::init_with_dist(dist + 0.1);
         let _ = self.intersect(&Ray { org, dir }, &mut record, &self.bvh_tree[0]);
-        if record.obj_id != obj.get_id() {
+        if record.obj_id != obj.get_obj_id() {
             return nee_result;
         }
 

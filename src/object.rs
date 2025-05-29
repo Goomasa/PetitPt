@@ -17,7 +17,7 @@ pub enum Object<'a> {
         radius: f64,
         bxdf: Bxdf,
         texture: Texture<'a>,
-        id: i32,
+        obj_id: i32,
         bbox: AABB,
     },
 
@@ -27,7 +27,7 @@ pub enum Object<'a> {
         max_p: Point3,
         bxdf: Bxdf,
         texture: Texture<'a>,
-        id: i32,
+        obj_id: i32,
         bbox: AABB,
     },
 
@@ -38,7 +38,7 @@ pub enum Object<'a> {
         normal: Vec3,
         bxdf: Bxdf,
         texture: Texture<'a>,
-        id: i32,
+        obj_id: i32,
         bbox: AABB,
     },
 }
@@ -56,7 +56,7 @@ impl<'a> Object<'a> {
             radius,
             bxdf,
             texture,
-            id: freshid.gen_id(),
+            obj_id: freshid.gen_id(),
             bbox: AABB {
                 min_p: center - Vec3::new(radius),
                 max_p: center + Vec3::new(radius),
@@ -81,7 +81,7 @@ impl<'a> Object<'a> {
             max_p,
             bxdf,
             texture,
-            id: freshid.gen_id(),
+            obj_id: freshid.gen_id(),
             bbox: AABB { min_p, max_p }.rev_aabb(),
         }
     }
@@ -112,7 +112,7 @@ impl<'a> Object<'a> {
             normal,
             bxdf,
             texture,
-            id: freshid.gen_id(),
+            obj_id: freshid.gen_id(),
             bbox: AABB { min_p, max_p }.rev_aabb(),
         }
     }
@@ -124,7 +124,7 @@ impl<'a> Object<'a> {
                 radius,
                 bxdf,
                 texture,
-                id,
+                obj_id: id,
                 ..
             } => {
                 if let Some((t, hitpos, normal)) = hit_sphere(center, radius, ray, record.distance)
@@ -144,7 +144,7 @@ impl<'a> Object<'a> {
                 max_p,
                 bxdf,
                 texture,
-                id,
+                obj_id: id,
                 ..
             } => {
                 if let Some((t, hitpos, normal, (u, v))) =
@@ -166,7 +166,7 @@ impl<'a> Object<'a> {
                 normal,
                 bxdf,
                 texture,
-                id,
+                obj_id: id,
                 ..
             } => {
                 if let Some((t, pos, (u, v))) =
@@ -191,11 +191,11 @@ impl<'a> Object<'a> {
         }
     }
 
-    pub fn get_id(&self) -> i32 {
+    pub fn get_obj_id(&self) -> i32 {
         match self {
-            Object::Sphere { id, .. }
-            | Object::Rectangle { id, .. }
-            | Object::Triangle { id, .. } => *id,
+            Object::Sphere { obj_id: id, .. }
+            | Object::Rectangle { obj_id: id, .. }
+            | Object::Triangle { obj_id: id, .. } => *id,
         }
     }
 

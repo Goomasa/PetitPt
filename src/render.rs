@@ -35,6 +35,7 @@ pub fn render(camera: &impl Camara, scene: &Scene) {
                         for _ in 0..spp {
                             let mut tracer = Pathtracing::new(Ray { org, dir });
                             let rad = tracer.integrate(scene, &mut rand) * g_term;
+                            //let rad = tracer.test_normal(scene) * g_term;
                             if !is_valid(&rad) {
                                 continue;
                             }

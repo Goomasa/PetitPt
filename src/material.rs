@@ -15,6 +15,7 @@ pub enum Bxdf {
     },
     Dielectric {
         ior: f64,
+        trans_id: i32,
     },
     Light,
     MicroBrdf {
@@ -26,6 +27,7 @@ pub enum Bxdf {
     MicroBtdf {
         a: f64,
         ior: f64,
+        trans_id: i32,
     },
 }
 
@@ -44,6 +46,10 @@ impl Bxdf {
         }
     }
 
+    pub fn set_dielectric(ior: f64, trans_id: i32) -> Self {
+        Self::Dielectric { ior, trans_id }
+    }
+
     pub fn set_spec_co(cior: Color, k: Color) -> Self {
         Self::Specular { cior, k }
     }
@@ -59,6 +65,10 @@ impl Bxdf {
 
     pub fn set_microbrdf_co(ax: f64, ay: f64, cior: Color, k: Color) -> Self {
         Self::MicroBrdf { ax, ay, cior, k }
+    }
+
+    pub fn set_microbtdf(a: f64, ior: f64, trans_id: i32) -> Self {
+        Self::MicroBtdf { a, ior, trans_id }
     }
 }
 

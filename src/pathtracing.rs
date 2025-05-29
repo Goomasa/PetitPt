@@ -97,18 +97,15 @@ impl Pathtracing {
         self.brdf_sample_pdf = -1.;
     }
 
-    fn trace_dielectric(&mut self, ior_mat: f64, rand: &mut XorRand) {
+    fn trace_dielectric(&mut self, ior_mat: f64, rand: &mut XorRand, trans_id: i32) {
         let (id, ior_env) = self.ior_stack[self.ior_stack.len() - 1];
-        let into = id == -1; // TODO: set bxdf-id?
+        let into = id != trans_id;
 
         let ior_env = if into {
             ior_env
         } else {
             self.ior_stack[self.ior_stack.len() - 2].1
         };
-
-        //let ior_env = 1.;
-        //let into = dot(self.record.normal, self.now_ray.dir) < 0.;
 
         let (is_refract, out_dir, fresnel, refl_prob) = refraction_dir(
             into,
@@ -125,7 +122,7 @@ impl Pathtracing {
             new_org = self.record.pos - self.orienting_normal * 0.00001;
             if into {
                 nnt = ior_env / ior_mat;
-                self.ior_stack.push((self.record.obj_id, ior_mat));
+                self.ior_stack.push((trans_id, ior_mat));
             } else {
                 nnt = ior_mat / ior_env;
                 let _ = self.ior_stack.pop();
@@ -201,13 +198,20 @@ impl Pathtracing {
         }
     }
 
-    fn trace_microbtdf(&mut self, scene: &Scene, rand: &mut XorRand, a: f64, ior_mat: f64) {
+    fn trace_microbtdf(
+        &mut self,
+        scene: &Scene,
+        rand: &mut XorRand,
+        a: f64,
+        ior_mat: f64,
+        trans_id: i32,
+    ) {
         let wi = -self.now_ray.dir;
         let vn = sample_ggx_vndf(&self.orienting_normal, &wi, a, a, rand);
         let alpha_sq = a * a;
 
         let (id, ior_env) = self.ior_stack[self.ior_stack.len() - 1];
-        let into = id == -1;
+        let into = id != trans_id;
 
         let ior_env = if into {
             ior_env
@@ -230,7 +234,7 @@ impl Pathtracing {
             let ja;
             if into {
                 ja = micro_btdf_j(ior_env, ior_mat, &wi, &dir, &vn);
-                self.ior_stack.push((self.record.obj_id, ior_mat));
+                self.ior_stack.push((trans_id, ior_mat));
             } else {
                 ja = micro_btdf_j(ior_mat, ior_env, &wi, &dir, &vn);
                 let _ = self.ior_stack.pop();
@@ -347,17 +351,25 @@ impl Pathtracing {
                 Bxdf::Specular { cior, k } => {
                     self.trace_specular(&cior, &k);
                 }
-                Bxdf::Dielectric { ior } => {
-                    self.trace_dielectric(ior, rand);
+                Bxdf::Dielectric { ior, trans_id } => {
+                    self.trace_dielectric(ior, rand, trans_id);
                 }
                 Bxdf::MicroBrdf { ax, ay, cior, k } => {
                     self.trace_microbrdf(scene, rand, ax, ay, &cior, &k);
                 }
-                Bxdf::MicroBtdf { a, ior } => {
-                    self.trace_microbtdf(scene, rand, a, ior);
+                Bxdf::MicroBtdf { a, ior, trans_id } => {
+                    self.trace_microbtdf(scene, rand, a, ior, trans_id);
                 }
             }
         }
         self.rad
+    }
+
+    pub fn test_normal(&mut self, scene: &Scene) -> Color {
+        if scene.intersect(&self.now_ray, &mut self.record, &scene.bvh_tree[0]) {
+            Vec3::new(0.5) + self.record.normal * 0.5
+        } else {
+            Vec3::new(0.)
+        }
     }
 }
