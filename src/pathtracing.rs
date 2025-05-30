@@ -33,7 +33,38 @@ impl Pathtracing {
             throughput: Vec3::new(1.),
             rad: Vec3::new(0.),
             brdf_sample_pdf: -1.,
-            medium_stack: vec![(-1, 1., -1., -1.)],
+            medium_stack: vec![(-1, 1., -1., 0.)],
+        }
+    }
+
+    fn is_into(&mut self, trans_id: i32) -> bool {
+        for (id, ..) in self.medium_stack.iter() {
+            if *id == trans_id {
+                return false;
+            }
+        }
+        true
+    }
+
+    fn has_ior(&mut self) -> bool {
+        for (_, ior, ..) in self.medium_stack.iter() {
+            if *ior != 1. {
+                return true;
+            }
+        }
+        false
+    }
+
+    fn has_medium(&mut self) -> bool {
+        if self.medium_stack.last().unwrap().2 < 0. {
+            return false;
+        }
+        true
+    }
+
+    fn remove_medium(&mut self, trans_id: i32) {
+        if let Some(idx) = self.medium_stack.iter().position(|(x, ..)| *x == trans_id) {
+            self.medium_stack.remove(idx);
         }
     }
 
@@ -82,7 +113,8 @@ impl Pathtracing {
         if self.brdf_sample_pdf < 0. {
             self.rad = self.rad + multiply(self.throughput, self.record.color) / self.pdf;
         } else {
-            let nee_pdf = scene.sample_obj_pdf(self.now_ray.org, &self.record);
+            let nee_pdf = scene.sample_obj_pdf(self.now_ray.org, &self.record)
+                * (-0.01 * self.record.distance).exp();
             let mis_weight = self.brdf_sample_pdf / (self.brdf_sample_pdf + nee_pdf);
             self.rad =
                 self.rad + multiply(self.throughput, self.record.color) * mis_weight / self.pdf;
@@ -124,18 +156,11 @@ impl Pathtracing {
     }
 
     fn trace_dielectric(&mut self, ior_mat: f64, rand: &mut XorRand, trans_id: i32) {
-        let (id, ior_env, ..) = self.medium_stack[self.medium_stack.len() - 1];
-        let into = id != trans_id;
-
-        let ior_env = if into {
-            ior_env
-        } else {
-            self.medium_stack[self.medium_stack.len() - 2].1
-        };
+        let into = self.is_into(trans_id);
 
         let (is_refract, out_dir, fresnel, refl_prob) = refraction_dir(
             into,
-            ior_env,
+            1.,
             ior_mat,
             self.orienting_normal,
             self.now_ray.dir,
@@ -147,11 +172,11 @@ impl Pathtracing {
         if is_refract {
             new_org = self.record.pos - self.orienting_normal * 0.00001;
             if into {
-                nnt = ior_env / ior_mat;
-                self.medium_stack.push((trans_id, ior_mat, -1., -1.));
+                nnt = 1. / ior_mat;
+                self.medium_stack.push((trans_id, ior_mat, -1., 0.));
             } else {
-                nnt = ior_mat / ior_env;
-                let _ = self.medium_stack.pop();
+                nnt = ior_mat;
+                self.remove_medium(trans_id);
             }
         } else {
             new_org = self.record.pos + self.orienting_normal * 0.00001;
@@ -236,17 +261,10 @@ impl Pathtracing {
         let vn = sample_ggx_vndf(&self.orienting_normal, &wi, a, a, rand);
         let alpha_sq = a * a;
 
-        let (id, ior_env, ..) = self.medium_stack[self.medium_stack.len() - 1];
-        let into = id != trans_id;
-
-        let ior_env = if into {
-            ior_env
-        } else {
-            self.medium_stack[self.medium_stack.len() - 2].1
-        };
+        let into = self.is_into(trans_id);
 
         let (is_refract, dir, fresnel, refl_prob) =
-            refraction_dir(into, ior_env, ior_mat, vn, self.now_ray.dir, rand);
+            refraction_dir(into, 1., ior_mat, vn, self.now_ray.dir, rand);
 
         let g1_wo = shadow_mask_fn(alpha_sq, &dir, &self.orienting_normal);
         let g1_wi = shadow_mask_fn(alpha_sq, &wi, &self.orienting_normal);
@@ -259,11 +277,11 @@ impl Pathtracing {
 
             let ja;
             if into {
-                ja = micro_btdf_j(ior_env, ior_mat, &wi, &dir, &vn);
-                self.medium_stack.push((trans_id, ior_mat, -1., -1.));
+                ja = micro_btdf_j(1., ior_mat, &wi, &dir, &vn);
+                self.medium_stack.push((trans_id, ior_mat, -1., 0.));
             } else {
-                ja = micro_btdf_j(ior_mat, ior_env, &wi, &dir, &vn);
-                let _ = self.medium_stack.pop();
+                ja = micro_btdf_j(ior_mat, 1., &wi, &dir, &vn);
+                self.remove_medium(trans_id);
             };
 
             let vndf = g1_wi * dot(wi, vn) * d_vn * ja / dot_wi_n;
@@ -274,10 +292,10 @@ impl Pathtracing {
                 let ja;
                 if into {
                     nee_wh = -(wi + nee_result.dir * ior_mat).normalize();
-                    ja = micro_btdf_j(ior_env, ior_mat, &wi, &nee_result.dir, &nee_wh);
+                    ja = micro_btdf_j(1., ior_mat, &wi, &nee_result.dir, &nee_wh);
                 } else {
                     nee_wh = -(wi * ior_mat + nee_result.dir).normalize();
-                    ja = micro_btdf_j(ior_mat, ior_env, &wi, &nee_result.dir, &nee_wh);
+                    ja = micro_btdf_j(ior_mat, 1., &wi, &nee_result.dir, &nee_wh);
                 }
 
                 if dot(self.orienting_normal, nee_wh) > EPS {
@@ -287,7 +305,7 @@ impl Pathtracing {
                     let nee_vndf = g1_wi * dot(wi, nee_wh) * d_nee_vn * ja / dot_wi_n;
                     let mis_weight = 1. / (nee_result.pdf + nee_vndf);
                     let nee_fresnel =
-                        fr_dielectric_ior(into, ior_env, ior_mat, &nee_result.dir, &nee_wh);
+                        fr_dielectric_ior(into, 1., ior_mat, &nee_result.dir, &nee_wh);
                     let nee_btdf = (1. - nee_fresnel) * g1_nee_wo * nee_vndf * dot(wi, nee_wh);
                     self.rad = self.rad
                         + multiply(
@@ -332,38 +350,33 @@ impl Pathtracing {
     pub fn freepath_sample(&mut self, scene: &Scene, rand: &mut XorRand) -> bool {
         let (_, _, sigma_s, sigma_e) = self.medium_stack.last().unwrap();
         let dist = -1. * (rand.next01()).ln() / sigma_e;
-        self.throughput = self.throughput * *sigma_s / *sigma_e;
 
         self.record = HitRecord::init_with_dist(dist);
         if !scene.intersect(&self.now_ray, &mut self.record, &scene.bvh_tree[0]) {
+            self.throughput = self.throughput * *sigma_s / *sigma_e;
             let org = self.now_ray.org + self.now_ray.dir * dist;
             let dir = hg_phase(&self.now_ray.dir, 0.9, rand);
             self.now_ray = Ray { org, dir };
             return false;
-        } else {
-            let org = self.now_ray.org + self.now_ray.dir * (self.record.distance + 0.00001);
-            self.now_ray = Ray {
-                org,
-                dir: self.now_ray.dir,
-            };
         }
         true
     }
 
     pub fn integrate(&mut self, scene: &Scene, rand: &mut XorRand) -> Color {
         for time in 0.. {
-            if self.medium_stack.last().unwrap().2 < 0. {
+            if self.has_medium() && !self.has_ior() {
+                if !self.freepath_sample(scene, rand) {
+                    let roulette_prob = self.roulette(time);
+                    if rand.next01() > roulette_prob {
+                        break;
+                    }
+                    self.pdf *= roulette_prob;
+                    continue;
+                }
+            } else {
                 if !self.ray_intersect(scene) {
                     break;
                 }
-            } else if !self.freepath_sample(scene, rand) {
-                let roulette_prob = self.roulette(time);
-                if rand.next01() > roulette_prob {
-                    break;
-                }
-                self.pdf *= roulette_prob;
-                self.throughput = self.throughput / self.pdf;
-                continue;
             }
 
             let roulette_prob = self.roulette(time);
@@ -399,21 +412,24 @@ impl Pathtracing {
                     self.trace_microbtdf(scene, rand, a, ior, trans_id);
                 }
                 Bxdf::Medium {
-                    sigma_a,
+                    sigma_a: _,
                     sigma_s,
                     sigma_e,
                     trans_id,
                 } => {
-                    if self.medium_stack.last().unwrap().0 != trans_id {
-                        self.medium_stack.push((trans_id, -1., sigma_s, sigma_e));
+                    if self.is_into(trans_id) {
+                        self.medium_stack.push((trans_id, 1., sigma_s, sigma_e));
                         self.now_ray = Ray {
-                            org: self.record.pos + self.now_ray.dir * 0.00001,
+                            org: self.record.pos - self.orienting_normal * 0.00001,
                             dir: self.now_ray.dir,
-                        }
+                        };
                     } else {
-                        self.medium_stack.pop();
+                        self.now_ray = Ray {
+                            org: self.record.pos - self.orienting_normal * 0.00001,
+                            dir: self.now_ray.dir,
+                        };
+                        self.remove_medium(trans_id);
                     }
-                    self.throughput = self.throughput / self.pdf;
                 }
             }
         }

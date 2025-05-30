@@ -37,9 +37,9 @@ pub fn example1() {
     );
 
     let sphere0 = Object::set_sphere(
-        Vec3(-10., 5., 30.),
+        Vec3(-12., 5., 30.),
         4.,
-        Bxdf::set_medium(0., 0.1, 2),
+        Bxdf::set_medium(0.1, 0.1, 2),
         Texture::set_solid(Vec3::new(1.)),
         obj_id,
     );
@@ -145,6 +145,15 @@ pub fn cornel_box() {
         obj_id,
     );
 
+    let medium = Object::set_rect(
+        Axis::Z,
+        Vec3(-100., -100., 10.),
+        Vec3(100., 100., 10.),
+        Bxdf::set_medium(0., 0.01, 2),
+        Texture::set_solid(Vec3::new(0.9)),
+        obj_id,
+    );
+
     //using stanford-bunny
     //Stanford Computer Graphics Laboratory
     //http://graphics.stanford.edu/data/3Dscanrep/
@@ -157,7 +166,9 @@ pub fn cornel_box() {
         obj_id,
     );
 
-    let mut objects = vec![&rect0, &rect1, &rect2, &rect3, &rect4, &rect5, &sphere];
+    let mut objects = vec![
+        &rect0, &rect1, &rect2, &rect3, &rect4, &rect5, &sphere, &medium,
+    ];
     for obj in polygon.iter() {
         objects.push(obj);
     }
@@ -183,8 +194,8 @@ pub fn cornel_box() {
         42.,
         96.,
         100.,
-        2,
-        2,
+        1,
+        1,
     );
     let scene = Scene::new(objects, Texture::set_solid(Vec3::new(0.)));
 
@@ -193,8 +204,8 @@ pub fn cornel_box() {
 
 fn main() {
     let start = std::time::Instant::now();
-    example1();
-    //cornel_box();
+    //example1();
+    cornel_box();
     let end = start.elapsed();
     println!("{}.{:03}sec", end.as_secs(), end.subsec_nanos() / 1_000_000);
 }

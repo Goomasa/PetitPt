@@ -19,6 +19,7 @@ pub struct Scene<'a> {
 
 impl<'a> Scene<'a> {
     pub fn new(mut objs: Vec<&'a Object>, back: Texture<'a>) -> Self {
+        objs.shrink_to_fit();
         let lights = objs
             .clone()
             .into_iter()
@@ -102,13 +103,13 @@ impl<'a> Scene<'a> {
 
         let mut record = HitRecord::init_with_dist(dist + 0.1);
         let _ = self.intersect(&Ray { org, dir }, &mut record, &self.bvh_tree[0]);
-        if record.obj_id != obj.get_obj_id() {
+        if record.obj_id != obj.get_obj_id() || rand.next01() > (-0.01 * record.distance).exp() {
             return nee_result;
         }
 
         nee_result.dir = dir;
         nee_result.color = record.color;
-        nee_result.pdf = pdf / size as f64;
+        nee_result.pdf = pdf / size as f64 * (-0.01 * record.distance).exp();
 
         nee_result
     }

@@ -86,6 +86,15 @@ impl Bxdf {
             trans_id,
         }
     }
+
+    pub fn get_trans_id(&self) -> i32 {
+        match self {
+            Self::Dielectric { trans_id, .. }
+            | Self::MicroBtdf { trans_id, .. }
+            | Self::Medium { trans_id, .. } => *trans_id,
+            _ => -1,
+        }
+    }
 }
 
 pub fn sample_lambert(normal: &Vec3, rand: &mut XorRand) -> Vec3 {
