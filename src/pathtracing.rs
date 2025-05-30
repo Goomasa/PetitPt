@@ -355,7 +355,7 @@ impl Pathtracing {
         if !scene.intersect(&self.now_ray, &mut self.record, &scene.bvh_tree[0]) {
             self.throughput = self.throughput * *sigma_s / *sigma_e;
             let org = self.now_ray.org + self.now_ray.dir * dist;
-            let dir = hg_phase(&self.now_ray.dir, 0.9, rand);
+            let dir = hg_phase(&self.now_ray.dir, 0.8, rand);
             self.now_ray = Ray { org, dir };
             return false;
         }

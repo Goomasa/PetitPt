@@ -147,8 +147,8 @@ pub fn cornel_box() {
 
     let medium = Object::set_rect(
         Axis::Z,
-        Vec3(-100., -100., 10.),
-        Vec3(100., 100., 10.),
+        Vec3(-30., -10., 1.),
+        Vec3(30., 60., 1.),
         Bxdf::set_medium(0., 0.01, 2),
         Texture::set_solid(Vec3::new(0.9)),
         obj_id,
@@ -185,17 +185,17 @@ pub fn cornel_box() {
     );
     */
     let camera = LensModel::new(
-        800,
+        600,
         600,
         Vec3(0., 0., -1.).normalize(),
         Vec3(0., 25., 120.),
-        40.,
+        30.,
         2.,
         42.,
         96.,
         100.,
-        1,
-        1,
+        4,
+        4,
     );
     let scene = Scene::new(objects, Texture::set_solid(Vec3::new(0.)));
 
