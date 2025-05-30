@@ -37,9 +37,9 @@ pub fn example1() {
     );
 
     let sphere0 = Object::set_sphere(
-        Vec3(-18., 5., 30.),
+        Vec3(-10., 5., 30.),
         4.,
-        Bxdf::set_spec_di(),
+        Bxdf::set_medium(0., 0.1, 2),
         Texture::set_solid(Vec3::new(1.)),
         obj_id,
     );
@@ -193,8 +193,8 @@ pub fn cornel_box() {
 
 fn main() {
     let start = std::time::Instant::now();
-    //example1();
-    cornel_box();
+    example1();
+    //cornel_box();
     let end = start.elapsed();
     println!("{}.{:03}sec", end.as_secs(), end.subsec_nanos() / 1_000_000);
 }

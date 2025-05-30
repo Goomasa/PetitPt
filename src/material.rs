@@ -29,6 +29,13 @@ pub enum Bxdf {
         ior: f64,
         trans_id: i32,
     },
+    //not bxdf
+    Medium {
+        sigma_a: f64,
+        sigma_s: f64,
+        sigma_e: f64,
+        trans_id: i32,
+    },
 }
 
 impl Bxdf {
@@ -69,6 +76,15 @@ impl Bxdf {
 
     pub fn set_microbtdf(a: f64, ior: f64, trans_id: i32) -> Self {
         Self::MicroBtdf { a, ior, trans_id }
+    }
+
+    pub fn set_medium(s_ab: f64, s_sc: f64, trans_id: i32) -> Self {
+        Self::Medium {
+            sigma_a: s_ab,
+            sigma_s: s_sc,
+            sigma_e: s_ab + s_sc,
+            trans_id,
+        }
     }
 }
 
@@ -248,4 +264,25 @@ pub fn ggx_normal_df(alpha_sq: f64, ax: f64, ay: f64, normal: &Vec3, vn: &Vec3) 
 pub fn micro_btdf_j(ior_i: f64, ior_o: f64, wi: &Vec3, wo: &Vec3, wh: &Vec3) -> f64 {
     let dot_wo_wh = dot(*wo, *wh);
     ior_o * ior_o * dot_wo_wh.abs() / (ior_i * dot(*wi, *wh) + ior_o * dot_wo_wh).powf(2.)
+}
+
+pub fn hg_phase(dir: &Vec3, g: f64, rand: &mut XorRand) -> Vec3 {
+    let phi = 2. * PI * rand.next01();
+    let cos_theta = if g < EPS {
+        1. - 2. * rand.next01()
+    } else {
+        let tmp = (1. - g * g) / (1. + g - 2. * rand.next01()).powi(2);
+        -1. / (2. * g) * (1. + g * g - tmp)
+    };
+    let sin_theta = (1. - cos_theta * cos_theta).sqrt();
+
+    let w = *dir;
+    let u = if w.0.abs() > EPS {
+        cross(w, Vec3(0., 1., 0.)).normalize()
+    } else {
+        cross(w, Vec3(1., 0., 0.)).normalize()
+    };
+    let v = cross(w, u);
+
+    u * sin_theta * phi.cos() + v * sin_theta * phi.sin() + w * cos_theta
 }
