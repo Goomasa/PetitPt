@@ -1,6 +1,6 @@
 use crate::{
     bvh::{construct_bvh, BvhNode, BvhTree},
-    math::Point3,
+    math::{Point3, INF},
     object::{
         sample_rect, sample_rect_pdf, sample_sphere, sample_sphere_pdf, sample_tri_pdf,
         sample_triangle, Object,
@@ -12,13 +12,14 @@ use crate::{
 
 pub struct Scene<'a> {
     pub objects: Vec<&'a Object<'a>>,
+    pub mediums: Vec<&'a Object<'a>>,
     pub background: Texture<'a>,
     pub lights: Vec<&'a Object<'a>>,
     pub bvh_tree: BvhTree,
 }
 
 impl<'a> Scene<'a> {
-    pub fn new(mut objs: Vec<&'a Object>, back: Texture<'a>) -> Self {
+    pub fn new(mut objs: Vec<&'a Object>, mediums: Vec<&'a Object>, back: Texture<'a>) -> Self {
         objs.shrink_to_fit();
         let lights = objs
             .clone()
@@ -31,13 +32,14 @@ impl<'a> Scene<'a> {
 
         Scene {
             objects: objs,
+            mediums,
             background: back,
             lights,
             bvh_tree,
         }
     }
 
-    pub fn intersect(&self, ray: &Ray, record: &mut HitRecord, node: &BvhNode) -> bool {
+    fn intersect_obj(&self, ray: &Ray, record: &mut HitRecord, node: &BvhNode) -> bool {
         let (l, r) = node.children;
         if node.bbox.hit(ray, record.distance) {
             if l == -1 {
@@ -45,14 +47,52 @@ impl<'a> Scene<'a> {
                     let _ = self.objects[*i].hit(ray, record);
                 }
             } else {
-                let _ = self.intersect(ray, record, &self.bvh_tree[l as usize]);
-                let _ = self.intersect(ray, record, &self.bvh_tree[r as usize]);
+                let _ = self.intersect_obj(ray, record, &self.bvh_tree[l as usize]);
+                let _ = self.intersect_obj(ray, record, &self.bvh_tree[r as usize]);
             }
         }
         record.obj_id != -1
     }
 
-    pub fn nee(&self, org: Point3, rand: &mut XorRand) -> NeeResult {
+    fn intersect_medium(&self, ray: &Ray, record: &mut HitRecord) -> bool {
+        for med in self.mediums.iter() {
+            med.hit(ray, record);
+        }
+        record.obj_id != -1
+    }
+
+    pub fn intersect(&self, ray: &Ray, record: &mut HitRecord, node: &BvhNode) -> bool {
+        let b1 = self.intersect_obj(ray, record, node);
+        let b2 = self.intersect_medium(ray, record);
+        // evaluate both of them
+        b1 || b2
+    }
+
+    fn intersect_medium_list(&self, ray: &Ray, init_e: f64, max_dist: f64) -> Vec<(f64, f64)> {
+        // return (sigma_extinct, distant)
+        let mut mlist = vec![(init_e, 0.)];
+        for med in self.mediums.iter() {
+            let mut record = HitRecord::init_with_dist(max_dist);
+            if med.hit(ray, &mut record) {
+                mlist.push((med.get_bxdf().get_sigma_ex(), record.distance));
+            }
+        }
+        mlist.push((0., max_dist));
+        mlist.sort_by(|(_, d1), (_, d2)| d1.total_cmp(d2));
+        mlist
+    }
+
+    pub fn dist_to_medium(&self, ray: &Ray, trans_id: i32) -> f64 {
+        let mut record = HitRecord::new();
+        for med in self.mediums.iter() {
+            if med.get_bxdf().get_trans_id() == trans_id {
+                med.hit(ray, &mut record);
+            }
+        }
+        record.distance
+    }
+
+    pub fn nee(&self, org: Point3, rand: &mut XorRand, sigma_e: f64) -> (NeeResult, f64) {
         let mut nee_result = NeeResult::new();
         let mut size = self.lights.len() as u32;
 
@@ -61,7 +101,7 @@ impl<'a> Scene<'a> {
         }
 
         if size == 0 {
-            return nee_result;
+            return (nee_result, 1.);
         }
 
         let idx = rand.nexti() % size;
@@ -78,14 +118,14 @@ impl<'a> Scene<'a> {
                 let (color, dir, pdf) = self
                     .background
                     .sample_hdr(cdf, &cdf_row, *px_w, *px_h, rand);
-                if self.intersect(&Ray { org, dir }, &mut HitRecord::new(), &self.bvh_tree[0]) {
-                    return nee_result;
+                if self.intersect_obj(&Ray { org, dir }, &mut HitRecord::new(), &self.bvh_tree[0]) {
+                    return (nee_result, 1.);
                 }
 
                 nee_result.color = color;
                 nee_result.pdf = pdf / size as f64;
                 nee_result.dir = dir;
-                return nee_result;
+                return (nee_result, 1.);
             }
         }
 
@@ -103,15 +143,15 @@ impl<'a> Scene<'a> {
 
         let mut record = HitRecord::init_with_dist(dist + 0.1);
         let _ = self.intersect(&Ray { org, dir }, &mut record, &self.bvh_tree[0]);
-        if record.obj_id != obj.get_obj_id() || rand.next01() > (-0.01 * record.distance).exp() {
-            return nee_result;
+        if record.obj_id != obj.get_obj_id() || rand.next01() > (-sigma_e * record.distance).exp() {
+            return (nee_result, 1.);
         }
 
         nee_result.dir = dir;
         nee_result.color = record.color;
-        nee_result.pdf = pdf / size as f64 * (-0.01 * record.distance).exp();
+        nee_result.pdf = pdf / size as f64 * (-sigma_e * record.distance).exp();
 
-        nee_result
+        (nee_result, (-sigma_e * record.distance).exp())
     }
 
     pub fn sample_obj_pdf(&self, org: Point3, record: &HitRecord) -> f64 {

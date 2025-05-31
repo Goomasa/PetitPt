@@ -117,7 +117,7 @@ impl<'a> Object<'a> {
         }
     }
 
-    pub fn hit(&self, ray: &Ray, record: &mut HitRecord) {
+    pub fn hit(&self, ray: &Ray, record: &mut HitRecord) -> bool {
         match self {
             Object::Sphere {
                 center,
@@ -136,6 +136,9 @@ impl<'a> Object<'a> {
                     let (u, v) = sphere_uv(&hitpos, center);
                     record.color = texture.get_color(u, v);
                     record.obj_id = *id;
+                    true
+                } else {
+                    false
                 }
             }
             Object::Rectangle {
@@ -157,6 +160,9 @@ impl<'a> Object<'a> {
 
                     record.color = texture.get_color(u, v);
                     record.obj_id = *id;
+                    true
+                } else {
+                    false
                 }
             }
             Object::Triangle {
@@ -178,6 +184,9 @@ impl<'a> Object<'a> {
                     record.bxdf = *bxdf;
                     record.color = texture.get_color(u, v);
                     record.obj_id = *id;
+                    true
+                } else {
+                    false
                 }
             }
         }

@@ -37,6 +37,10 @@ impl Pathtracing {
         }
     }
 
+    fn get_sigma_e(&mut self) -> f64 {
+        self.medium_stack.last().unwrap().3
+    }
+
     fn is_into(&mut self, trans_id: i32) -> bool {
         for (id, ..) in self.medium_stack.iter() {
             if *id == trans_id {
@@ -113,9 +117,10 @@ impl Pathtracing {
         if self.brdf_sample_pdf < 0. {
             self.rad = self.rad + multiply(self.throughput, self.record.color) / self.pdf;
         } else {
-            let nee_pdf = scene.sample_obj_pdf(self.now_ray.org, &self.record)
-                * (-0.01 * self.record.distance).exp();
-            let mis_weight = self.brdf_sample_pdf / (self.brdf_sample_pdf + nee_pdf);
+            let nee_pdf = scene.sample_obj_pdf(self.now_ray.org, &self.record);
+            let mis_weight = self.brdf_sample_pdf
+                / (self.brdf_sample_pdf
+                    + nee_pdf * (-self.get_sigma_e() * self.record.distance).exp());
             self.rad =
                 self.rad + multiply(self.throughput, self.record.color) * mis_weight / self.pdf;
         }
@@ -127,11 +132,11 @@ impl Pathtracing {
         self.now_ray = Ray { org, dir };
 
         self.throughput = multiply(self.throughput, self.record.color);
-        let nee_result = scene.nee(org, rand);
+        let (nee_result, transmittance) = scene.nee(org, rand, self.get_sigma_e());
 
         if nee_result.pdf != 0. {
             let nee_dir_cos = dot(self.orienting_normal, nee_result.dir).abs();
-            let mis_weight = 1. / (nee_result.pdf + nee_dir_cos * PI_INV);
+            let mis_weight = 1. / (nee_result.pdf + nee_dir_cos * PI_INV * transmittance);
             self.rad = self.rad
                 + multiply(self.throughput, nee_result.color * PI_INV) * nee_dir_cos * mis_weight
                     / self.pdf;
@@ -216,7 +221,7 @@ impl Pathtracing {
         let org = self.record.pos + self.orienting_normal * 0.00001;
         self.now_ray = Ray { org, dir };
 
-        let nee_result = scene.nee(org, rand);
+        let (nee_result, transmittance) = scene.nee(org, rand, self.get_sigma_e());
 
         let g1_wi = shadow_mask_fn(alpha_sq, &wi, &self.orienting_normal);
         let d_vn = ggx_normal_df(alpha_sq, ax, ay, &self.orienting_normal, &vn);
@@ -229,7 +234,7 @@ impl Pathtracing {
             let nee_vndf = g1_wi * d_nee_vn / (4. * dot_wi_n);
 
             let g1_nee_wo = shadow_mask_fn(alpha_sq, &nee_result.dir, &self.orienting_normal);
-            let mis_weight = 1. / (nee_result.pdf + nee_vndf);
+            let mis_weight = 1. / (nee_result.pdf + nee_vndf * transmittance);
             let nee_fresnel = if cior.0 < 0. {
                 fr_dielectric_col(&self.record.color, &nee_result.dir, &nee_vn)
             } else {
@@ -286,7 +291,7 @@ impl Pathtracing {
 
             let vndf = g1_wi * dot(wi, vn) * d_vn * ja / dot_wi_n;
 
-            let nee_result = scene.nee(org, rand);
+            let (nee_result, transmittance) = scene.nee(org, rand, self.get_sigma_e());
             if nee_result.pdf != 0. {
                 let nee_wh;
                 let ja;
@@ -303,7 +308,7 @@ impl Pathtracing {
                         shadow_mask_fn(alpha_sq, &nee_result.dir, &self.orienting_normal);
                     let d_nee_vn = ggx_normal_df(alpha_sq, a, a, &self.orienting_normal, &nee_wh);
                     let nee_vndf = g1_wi * dot(wi, nee_wh) * d_nee_vn * ja / dot_wi_n;
-                    let mis_weight = 1. / (nee_result.pdf + nee_vndf);
+                    let mis_weight = 1. / (nee_result.pdf + nee_vndf * transmittance);
                     let nee_fresnel =
                         fr_dielectric_ior(into, 1., ior_mat, &nee_result.dir, &nee_wh);
                     let nee_btdf = (1. - nee_fresnel) * g1_nee_wo * nee_vndf * dot(wi, nee_wh);
@@ -326,14 +331,14 @@ impl Pathtracing {
 
             let vndf = g1_wi * d_vn / (4. * dot_wi_n);
 
-            let nee_result = scene.nee(org, rand);
+            let (nee_result, transmittance) = scene.nee(org, rand, self.get_sigma_e());
             if nee_result.pdf != 0. {
                 let nee_vn = (wi + nee_result.dir).normalize();
                 let d_nee_vn = ggx_normal_df(alpha_sq, a, a, &self.orienting_normal, &nee_vn);
                 let nee_vndf = g1_wi * d_nee_vn / (4. * dot_wi_n);
 
                 let g1_nee_wo = shadow_mask_fn(alpha_sq, &nee_result.dir, &self.orienting_normal);
-                let mis_weight = 1. / (nee_result.pdf + nee_vndf);
+                let mis_weight = 1. / (nee_result.pdf + nee_vndf * transmittance);
                 let nee_fresnel = fr_dielectric_col(&self.record.color, &nee_result.dir, &nee_vn);
                 let brdf = nee_fresnel * nee_vndf * g1_nee_wo;
                 self.rad = self.rad
@@ -348,7 +353,7 @@ impl Pathtracing {
     }
 
     pub fn freepath_sample(&mut self, scene: &Scene, rand: &mut XorRand) -> bool {
-        let (_, _, sigma_s, sigma_e) = self.medium_stack.last().unwrap();
+        let (trans_id, _, sigma_s, sigma_e) = self.medium_stack.last().unwrap();
         let dist = -1. * (rand.next01()).ln() / sigma_e;
 
         self.record = HitRecord::init_with_dist(dist);
@@ -356,9 +361,13 @@ impl Pathtracing {
             self.throughput = self.throughput * *sigma_s / *sigma_e;
             let org = self.now_ray.org + self.now_ray.dir * dist;
             let dir = hg_phase(&self.now_ray.dir, 0.8, rand);
+            let hg_pdf = hg_pdf(&self.now_ray.dir, &dir, 0.8);
+
+            self.brdf_sample_pdf = self.brdf_sample_pdf * hg_pdf * (-sigma_e * dist).exp();
             self.now_ray = Ray { org, dir };
             return false;
         }
+        self.brdf_sample_pdf = self.brdf_sample_pdf * (-sigma_e * self.record.distance).exp();
         true
     }
 

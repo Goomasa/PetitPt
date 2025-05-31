@@ -24,6 +24,7 @@ mod texture;
 
 pub fn example1() {
     let obj_id = &mut FreshId::new();
+    let medium_id = &mut FreshId::new();
     let (data, px_w, px_h) = load_hdr("assets/kloofendal_48d_partly_cloudy_puresky_1k.hdr");
     let cdf = make_cdf_hdr(&data, px_w, px_h);
 
@@ -41,7 +42,7 @@ pub fn example1() {
         4.,
         Bxdf::set_medium(0.1, 0.1, 2),
         Texture::set_solid(Vec3::new(1.)),
-        obj_id,
+        medium_id,
     );
 
     let sphere1 = Object::set_sphere(
@@ -68,7 +69,8 @@ pub fn example1() {
         obj_id,
     );
 
-    let objects = vec![&rect, &sphere0, &sphere1, &sphere2, &sphere3];
+    let objects = vec![&rect, &sphere1, &sphere2, &sphere3];
+    let mediums = vec![&sphere0];
     let camera = PinholeModel::new(
         Vec3(0., 10., 70.),
         800,
@@ -80,13 +82,18 @@ pub fn example1() {
         4,
     );
 
-    let scene = Scene::new(objects, Texture::set_image(&data, &cdf, px_w, px_h));
+    let scene = Scene::new(
+        objects,
+        mediums,
+        Texture::set_image(&data, &cdf, px_w, px_h),
+    );
 
     let _ = render(&camera, &scene);
 }
 
 pub fn cornel_box() {
     let obj_id = &mut FreshId::new();
+    let medium_id = &mut FreshId::new();
 
     let rect0 = Object::set_rect(
         Axis::Y,
@@ -149,9 +156,17 @@ pub fn cornel_box() {
         Axis::Z,
         Vec3(-30., -10., 1.),
         Vec3(30., 60., 1.),
-        Bxdf::set_medium(0., 0.01, 2),
+        Bxdf::set_medium(0., 0.02, 2),
         Texture::set_solid(Vec3::new(0.9)),
-        obj_id,
+        medium_id,
+    );
+
+    let medium2 = Object::set_sphere(
+        Vec3(0., 10., -20.),
+        10.,
+        Bxdf::set_medium(0.1, 0.1, 3),
+        Texture::set_solid(Vec3::new(0.9)),
+        medium_id,
     );
 
     //using stanford-bunny
@@ -166,12 +181,12 @@ pub fn cornel_box() {
         obj_id,
     );
 
-    let mut objects = vec![
-        &rect0, &rect1, &rect2, &rect3, &rect4, &rect5, &sphere, &medium,
-    ];
+    let mut objects = vec![&rect0, &rect1, &rect2, &rect3, &rect4, &rect5, &sphere];
     for obj in polygon.iter() {
-        objects.push(obj);
+        //objects.push(obj);
     }
+
+    let mediums = vec![&medium];
     /*
     let camera = PinholeModel::new(
         Vec3(0., 25., 55.),
@@ -194,10 +209,10 @@ pub fn cornel_box() {
         42.,
         96.,
         100.,
-        4,
-        4,
+        3,
+        3,
     );
-    let scene = Scene::new(objects, Texture::set_solid(Vec3::new(0.)));
+    let scene = Scene::new(objects, mediums, Texture::set_solid(Vec3::new(0.)));
 
     let _ = render(&camera, &scene);
 }

@@ -46,6 +46,13 @@ impl Bxdf {
         }
     }
 
+    pub fn is_medium(&self) -> bool {
+        match self {
+            Self::Medium { .. } => true,
+            _ => false,
+        }
+    }
+
     pub fn set_spec_di() -> Self {
         Self::Specular {
             cior: Vec3::new(-1.),
@@ -87,11 +94,16 @@ impl Bxdf {
         }
     }
 
+    pub fn get_sigma_ex(&self) -> f64 {
+        match self {
+            Self::Medium { sigma_e: e, .. } => *e,
+            _ => -1.,
+        }
+    }
+
     pub fn get_trans_id(&self) -> i32 {
         match self {
-            Self::Dielectric { trans_id, .. }
-            | Self::MicroBtdf { trans_id, .. }
-            | Self::Medium { trans_id, .. } => *trans_id,
+            Bxdf::Dielectric { trans_id: id, .. } | Bxdf::Medium { trans_id: id, .. } => *id,
             _ => -1,
         }
     }
@@ -294,4 +306,20 @@ pub fn hg_phase(dir: &Vec3, g: f64, rand: &mut XorRand) -> Vec3 {
     let v = cross(w, u);
 
     u * sin_theta * phi.cos() + v * sin_theta * phi.sin() + w * cos_theta
+}
+
+pub fn hg_pdf(wo: &Vec3, wi: &Vec3, g: f64) -> f64 {
+    let tmp = (1. + g * g + 2. * g * dot(*wo, *wi)).powf(1.5);
+    1. / (4. * PI) * (1. - g * g) / tmp
+}
+
+pub fn estimate_trans(mlist: &Vec<(f64, f64)>) -> f64 {
+    let mut exp = 0.;
+
+    for i in 0..mlist.len() - 1 {
+        let (sigma_e, start) = mlist[i];
+        let (_, end) = mlist[i + 1];
+        exp += sigma_e * (end - start);
+    }
+    (-exp).exp()
 }
