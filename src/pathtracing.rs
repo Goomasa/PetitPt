@@ -1,6 +1,6 @@
 use crate::{
     material::*,
-    math::{dot, max_elm, multiply, Color, Vec3, EPS, INF, PI},
+    math::{dot, max_elm, multiply, Color, Vec3, EPS, PI},
     object::sphere_uv,
     random::XorRand,
     ray::{HitRecord, Ray},
@@ -353,15 +353,15 @@ impl Pathtracing {
     }
 
     pub fn freepath_sample(&mut self, scene: &Scene, rand: &mut XorRand) -> bool {
-        let (trans_id, _, sigma_s, sigma_e) = self.medium_stack.last().unwrap();
+        let (_, _, sigma_s, sigma_e) = self.medium_stack.last().unwrap();
         let dist = -1. * (rand.next01()).ln() / sigma_e;
 
         self.record = HitRecord::init_with_dist(dist);
         if !scene.intersect(&self.now_ray, &mut self.record, &scene.bvh_tree[0]) {
             self.throughput = self.throughput * *sigma_s / *sigma_e;
             let org = self.now_ray.org + self.now_ray.dir * dist;
-            let dir = hg_phase(&self.now_ray.dir, 0.8, rand);
-            let hg_pdf = hg_pdf(&self.now_ray.dir, &dir, 0.8);
+            let dir = sample_hg_phase(&self.now_ray.dir, 0.9, rand);
+            let hg_pdf = hg_phase_pdf(&self.now_ray.dir, &dir, 0.9);
 
             self.brdf_sample_pdf = self.brdf_sample_pdf * hg_pdf * (-sigma_e * dist).exp();
             self.now_ray = Ray { org, dir };

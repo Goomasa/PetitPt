@@ -1,6 +1,6 @@
 use crate::{
     bvh::{construct_bvh, BvhNode, BvhTree},
-    math::{Point3, INF},
+    math::Point3,
     object::{
         sample_rect, sample_rect_pdf, sample_sphere, sample_sphere_pdf, sample_tri_pdf,
         sample_triangle, Object,
@@ -67,7 +67,7 @@ impl<'a> Scene<'a> {
         // evaluate both of them
         b1 || b2
     }
-
+    /*
     fn intersect_medium_list(&self, ray: &Ray, init_e: f64, max_dist: f64) -> Vec<(f64, f64)> {
         // return (sigma_extinct, distant)
         let mut mlist = vec![(init_e, 0.)];
@@ -81,16 +81,7 @@ impl<'a> Scene<'a> {
         mlist.sort_by(|(_, d1), (_, d2)| d1.total_cmp(d2));
         mlist
     }
-
-    pub fn dist_to_medium(&self, ray: &Ray, trans_id: i32) -> f64 {
-        let mut record = HitRecord::new();
-        for med in self.mediums.iter() {
-            if med.get_bxdf().get_trans_id() == trans_id {
-                med.hit(ray, &mut record);
-            }
-        }
-        record.distance
-    }
+    */
 
     pub fn nee(&self, org: Point3, rand: &mut XorRand, sigma_e: f64) -> (NeeResult, f64) {
         let mut nee_result = NeeResult::new();

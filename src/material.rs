@@ -248,7 +248,7 @@ pub fn fr_conductor(cior: &Color, k: &Color, wi: &Vec3, vn: &Vec3) -> Color {
     let k = [k.0, k.1, k.2];
     let mut refl = [0.; 3];
 
-    for i in 0..2 {
+    for i in 0..3 {
         let n_complex = Complex::new(cior[i], k[i]);
         let sin_theta_i_sq = sin_theta * sin_theta;
 
@@ -258,7 +258,13 @@ pub fn fr_conductor(cior: &Color, k: &Color, wi: &Vec3, vn: &Vec3) -> Color {
         let rs =
             (Complex::new(cos_theta, 0.0) - sqrt_term) / (Complex::new(cos_theta, 0.0) + sqrt_term);
         let rs_reflectance = rs.norm_sqr();
-        refl[i] = rs_reflectance;
+
+        let rp_numer = n_complex_sq * Complex::new(cos_theta, 0.0) - sqrt_term;
+        let rp_denom = n_complex_sq * Complex::new(cos_theta, 0.0) + sqrt_term;
+        let rp = rp_numer / rp_denom;
+        let rp_reflectance = rp.norm_sqr();
+
+        refl[i] = (rs_reflectance + rp_reflectance) / 2.;
     }
     Vec3(refl[0], refl[1], refl[2])
 }
@@ -287,7 +293,7 @@ pub fn micro_btdf_j(ior_i: f64, ior_o: f64, wi: &Vec3, wo: &Vec3, wh: &Vec3) -> 
     ior_o * ior_o * dot_wo_wh.abs() / (ior_i * dot(*wi, *wh) + ior_o * dot_wo_wh).powf(2.)
 }
 
-pub fn hg_phase(dir: &Vec3, g: f64, rand: &mut XorRand) -> Vec3 {
+pub fn sample_hg_phase(dir: &Vec3, g: f64, rand: &mut XorRand) -> Vec3 {
     let phi = 2. * PI * rand.next01();
     let cos_theta = if g < EPS {
         1. - 2. * rand.next01()
@@ -308,7 +314,7 @@ pub fn hg_phase(dir: &Vec3, g: f64, rand: &mut XorRand) -> Vec3 {
     u * sin_theta * phi.cos() + v * sin_theta * phi.sin() + w * cos_theta
 }
 
-pub fn hg_pdf(wo: &Vec3, wi: &Vec3, g: f64) -> f64 {
+pub fn hg_phase_pdf(wo: &Vec3, wi: &Vec3, g: f64) -> f64 {
     let tmp = (1. + g * g + 2. * g * dot(*wo, *wi)).powf(1.5);
     1. / (4. * PI) * (1. - g * g) / tmp
 }

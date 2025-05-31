@@ -56,7 +56,7 @@ pub fn example1() {
     let sphere2 = Object::set_sphere(
         Vec3(6., 5., 30.),
         4.,
-        Bxdf::set_microbtdf(0.1, 1.5, 1),
+        Bxdf::set_spec_co(Vec3(0.275, 1.116, 1.247), Vec3(3.3726, 2.5956, 2.456)),
         Texture::set_solid(Vec3::new(1.)),
         obj_id,
     );
@@ -64,7 +64,12 @@ pub fn example1() {
     let sphere3 = Object::set_sphere(
         Vec3(18., 5., 30.),
         4.,
-        Bxdf::set_microbrdf_co(0.05, 0.5, Vec3(0.18, 1.45, 1.53), Vec3(3.07, 1.97, 1.92)),
+        Bxdf::set_microbrdf_co(
+            0.3,
+            0.05,
+            Vec3(0.188, 0.543, 1.332),
+            Vec3(3.403, 2.231, 1.869),
+        ),
         Texture::set_solid(Vec3::new(1.)),
         obj_id,
     );
@@ -144,11 +149,19 @@ pub fn cornel_box() {
         obj_id,
     );
 
+    //Au: set_spec_co(Vec3(0.188, 0.543, 1.332), Vec3(3.403, 2.231, 1.869))
+    //Cu: set_spec_co(Vec3(0.275, 1.116, 1.247), Vec3(3.3726, 2.5956, 2.456))
+
     let sphere = Object::set_sphere(
         Vec3(15., 7., -13.),
         7.,
-        Bxdf::set_microbrdf_co(0.3, 0.05, Vec3(0.18, 1.45, 1.53), Vec3(3.07, 1.97, 1.92)),
-        Texture::set_solid(Vec3::new(1.)),
+        Bxdf::set_microbrdf_co(
+            0.3,
+            0.05,
+            Vec3(0.275, 1.116, 1.247),
+            Vec3(3.3726, 2.5956, 2.456),
+        ),
+        Texture::set_solid(Vec3(0.5, 0.5, 1.)),
         obj_id,
     );
 
@@ -186,7 +199,7 @@ pub fn cornel_box() {
         //objects.push(obj);
     }
 
-    let mediums = vec![&medium];
+    let mediums = vec![];
     /*
     let camera = PinholeModel::new(
         Vec3(0., 25., 55.),
@@ -209,8 +222,8 @@ pub fn cornel_box() {
         42.,
         96.,
         100.,
-        3,
-        3,
+        4,
+        4,
     );
     let scene = Scene::new(objects, mediums, Texture::set_solid(Vec3::new(0.)));
 
