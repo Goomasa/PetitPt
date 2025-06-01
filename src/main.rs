@@ -11,6 +11,7 @@ use texture::{load_hdr, make_cdf_hdr, Texture};
 mod aabb;
 mod bvh;
 mod camera;
+mod filter;
 mod material;
 mod math;
 mod object;
@@ -167,17 +168,9 @@ pub fn cornel_box() {
 
     let medium = Object::set_rect(
         Axis::Z,
-        Vec3(-30., -10., 1.),
-        Vec3(30., 60., 1.),
+        Vec3(-25., 0., 0.1),
+        Vec3(25., 50., 0.1),
         Bxdf::set_medium(0., 0.02, 2),
-        Texture::set_solid(Vec3::new(0.9)),
-        medium_id,
-    );
-
-    let medium2 = Object::set_sphere(
-        Vec3(0., 10., -20.),
-        10.,
-        Bxdf::set_medium(0.1, 0.1, 3),
         Texture::set_solid(Vec3::new(0.9)),
         medium_id,
     );
@@ -196,10 +189,10 @@ pub fn cornel_box() {
 
     let mut objects = vec![&rect0, &rect1, &rect2, &rect3, &rect4, &rect5, &sphere];
     for obj in polygon.iter() {
-        //objects.push(obj);
+        objects.push(obj);
     }
 
-    let mediums = vec![];
+    let mediums = vec![&medium];
     /*
     let camera = PinholeModel::new(
         Vec3(0., 25., 55.),

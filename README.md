@@ -10,6 +10,7 @@ A tiny pathtracer written in Rust
 - NEE (object, IBL)
 - BVH
 - Depth of field
+- Bilateral filter
 
 ## Using crates
 
@@ -39,5 +40,6 @@ Stanford bunny:
 , ACM Transactions on Graphics, Volume 26, Issue 1
 - https://qiita.com/omochi64/items/9336f57118ba918f82ec
 - Eric Heitz, Unity Technologies, Sampling the GGX Distribution of Visible Normals, Journal of Computer Graphics Techniques
-, Vol. 7, No. 4, 2018
+, 2018, Vol. 7, No. 4
 - https://sato-gallery.com/education/el/slide_hikari03.pdf
+- By Sylvain Paris, Pierre Kornprobst, Jack Tumblin, and Fr' edo Durand, "Bilateral Filtering: Theory and Applications", Foundations and Trends in Computer Graphics and Vision, 2008, Vol. 4, No. 1

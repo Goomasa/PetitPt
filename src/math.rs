@@ -124,3 +124,11 @@ pub fn gamma_rev(v: Color) -> (u32, u32, u32) {
     let b = (v.2.clamp(0., 1.).powf(1. / 2.2) * 255.) as u32;
     (r, g, b)
 }
+
+pub fn clamp_vec(v: Vec3, min: f64, max: f64) -> Vec3 {
+    Vec3(
+        v.0.clamp(min, max),
+        v.1.clamp(min, max),
+        v.2.clamp(min, max),
+    )
+}

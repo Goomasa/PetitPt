@@ -39,7 +39,7 @@ impl<'a> Scene<'a> {
         }
     }
 
-    fn intersect_obj(&self, ray: &Ray, record: &mut HitRecord, node: &BvhNode) -> bool {
+    pub fn intersect_obj(&self, ray: &Ray, record: &mut HitRecord, node: &BvhNode) -> bool {
         let (l, r) = node.children;
         if node.bbox.hit(ray, record.distance) {
             if l == -1 {

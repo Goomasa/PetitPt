@@ -446,8 +446,8 @@ impl Pathtracing {
     }
 
     pub fn test_normal(&mut self, scene: &Scene) -> Color {
-        if scene.intersect(&self.now_ray, &mut self.record, &scene.bvh_tree[0]) {
-            Vec3::new(0.5) + self.record.normal * 0.5
+        if scene.intersect_obj(&self.now_ray, &mut self.record, &scene.bvh_tree[0]) {
+            self.record.normal
         } else {
             Vec3::new(0.)
         }
