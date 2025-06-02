@@ -298,7 +298,7 @@ pub fn sample_hg_phase(dir: &Vec3, g: f64, rand: &mut XorRand) -> Vec3 {
     let cos_theta = if g < EPS {
         1. - 2. * rand.next01()
     } else {
-        let tmp = (1. - g * g) / (1. + g - 2. * rand.next01()).powi(2);
+        let tmp = ((1. - g * g) / (1. + g - 2. * g * rand.next01())).powi(2);
         -1. / (2. * g) * (1. + g * g - tmp)
     };
     let sin_theta = (1. - cos_theta * cos_theta).sqrt();
@@ -317,15 +317,4 @@ pub fn sample_hg_phase(dir: &Vec3, g: f64, rand: &mut XorRand) -> Vec3 {
 pub fn hg_phase_pdf(wo: &Vec3, wi: &Vec3, g: f64) -> f64 {
     let tmp = (1. + g * g + 2. * g * dot(*wo, *wi)).powf(1.5);
     1. / (4. * PI) * (1. - g * g) / tmp
-}
-
-pub fn estimate_trans(mlist: &Vec<(f64, f64)>) -> f64 {
-    let mut exp = 0.;
-
-    for i in 0..mlist.len() - 1 {
-        let (sigma_e, start) = mlist[i];
-        let (_, end) = mlist[i + 1];
-        exp += sigma_e * (end - start);
-    }
-    (-exp).exp()
 }

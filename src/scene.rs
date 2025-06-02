@@ -134,13 +134,13 @@ impl<'a> Scene<'a> {
 
         let mut record = HitRecord::init_with_dist(dist + 0.1);
         let _ = self.intersect(&Ray { org, dir }, &mut record, &self.bvh_tree[0]);
-        if record.obj_id != obj.get_obj_id() || rand.next01() > (-sigma_e * record.distance).exp() {
+        if record.obj_id != obj.get_obj_id() {
             return (nee_result, 1.);
         }
 
         nee_result.dir = dir;
         nee_result.color = record.color;
-        nee_result.pdf = pdf / size as f64 * (-sigma_e * record.distance).exp();
+        nee_result.pdf = pdf / size as f64;
 
         (nee_result, (-sigma_e * record.distance).exp())
     }

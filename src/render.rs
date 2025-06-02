@@ -88,7 +88,7 @@ pub fn render(camera: &impl Camara, scene: &Scene) {
         pixel_w as i32,
         pixel_h as i32,
         5,
-        0.05,
+        0.01,
         0.1,
     );
 

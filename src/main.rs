@@ -57,7 +57,7 @@ pub fn example1() {
     let sphere2 = Object::set_sphere(
         Vec3(6., 5., 30.),
         4.,
-        Bxdf::set_spec_co(Vec3(0.275, 1.116, 1.247), Vec3(3.3726, 2.5956, 2.456)),
+        Bxdf::set_spec_co(Vec3(0.188, 0.543, 1.332), Vec3(3.403, 2.231, 1.869)),
         Texture::set_solid(Vec3::new(1.)),
         obj_id,
     );
@@ -146,7 +146,7 @@ pub fn cornel_box() {
         Vec3(-5., 49.99, -20.),
         Vec3(5., 49.99, -30.),
         Bxdf::Light,
-        Texture::set_solid(Vec3::new(50.)),
+        Texture::set_solid(Vec3(50., 45., 45.)),
         obj_id,
     );
 
@@ -170,7 +170,7 @@ pub fn cornel_box() {
         Axis::Z,
         Vec3(-25., 0., 0.1),
         Vec3(25., 50., 0.1),
-        Bxdf::set_medium(0., 0.02, 2),
+        Bxdf::set_medium(0., 0.03, 2),
         Texture::set_solid(Vec3::new(0.9)),
         medium_id,
     );
@@ -181,7 +181,7 @@ pub fn cornel_box() {
     let polygon = read_ply(
         "assets/bun_zipper_res4.ply",
         Vec3(0.5, 0.5, 1.0),
-        Bxdf::set_microbtdf(0.05, 1.5, 0),
+        Bxdf::set_dielectric(1.5, 0),
         200.,
         Vec3(-3., -7.5, -25.),
         obj_id,
@@ -189,7 +189,7 @@ pub fn cornel_box() {
 
     let mut objects = vec![&rect0, &rect1, &rect2, &rect3, &rect4, &rect5, &sphere];
     for obj in polygon.iter() {
-        objects.push(obj);
+        //objects.push(obj);
     }
 
     let mediums = vec![&medium];
@@ -215,8 +215,8 @@ pub fn cornel_box() {
         42.,
         96.,
         100.,
-        4,
-        4,
+        12,
+        12,
     );
     let scene = Scene::new(objects, mediums, Texture::set_solid(Vec3::new(0.)));
 

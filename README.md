@@ -10,6 +10,7 @@ A tiny pathtracer written in Rust
 - NEE (object, IBL)
 - BVH
 - Depth of field
+- Homogeneous medium (no color, no emission)
 - Bilateral filter
 
 ## Using crates
@@ -23,7 +24,7 @@ A tiny pathtracer written in Rust
 
 ## Gallery
 
-![Image](images/petitpt_bunny.jpg)
+![Image](images/misty_bunny.jpg)
 
 Stanford bunny: 
 

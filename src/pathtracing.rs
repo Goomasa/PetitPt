@@ -363,11 +363,11 @@ impl Pathtracing {
             let dir = sample_hg_phase(&self.now_ray.dir, 0.9, rand);
             let hg_pdf = hg_phase_pdf(&self.now_ray.dir, &dir, 0.9);
 
-            self.brdf_sample_pdf = self.brdf_sample_pdf * hg_pdf * (-sigma_e * dist).exp();
+            self.brdf_sample_pdf = hg_pdf;
             self.now_ray = Ray { org, dir };
             return false;
         }
-        self.brdf_sample_pdf = self.brdf_sample_pdf * (-sigma_e * self.record.distance).exp();
+        self.brdf_sample_pdf = self.brdf_sample_pdf * (-sigma_e * self.record.distance);
         true
     }
 
