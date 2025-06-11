@@ -49,7 +49,7 @@ pub fn render(camera: &impl Camara, scene: &Scene) {
             }
             println!("{v}");
         });
-
+    /*
     let mut normals = vec![Vec3::new(0.); (pixel_w * pixel_h) as usize];
 
     normals
@@ -91,11 +91,11 @@ pub fn render(camera: &impl Camara, scene: &Scene) {
         0.01,
         0.1,
     );
-
+    */
     for i in 0..pixel_w * pixel_h {
         let y = i / pixel_w;
         let x = i - pixel_w * y;
-        let rgb = gamma_rev(filtered_buf[i as usize]);
+        let rgb = gamma_rev(buffer[i as usize]);
         img.set_pixel(x, y as u32, px!(rgb.0, rgb.1, rgb.2));
     }
     let _ = img.save("render.bmp");

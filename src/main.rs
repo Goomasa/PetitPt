@@ -170,7 +170,7 @@ pub fn cornel_box() {
         Axis::Z,
         Vec3(-25., 0., 0.1),
         Vec3(25., 50., 0.1),
-        Bxdf::set_medium(0., 0.03, 2),
+        Bxdf::set_medium(0., 0.02, 2),
         Texture::set_solid(Vec3::new(0.9)),
         medium_id,
     );
@@ -215,8 +215,8 @@ pub fn cornel_box() {
         42.,
         96.,
         100.,
-        12,
-        12,
+        6,
+        6,
     );
     let scene = Scene::new(objects, mediums, Texture::set_solid(Vec3::new(0.)));
 

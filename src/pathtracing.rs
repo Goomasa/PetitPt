@@ -15,11 +15,11 @@ const PI_INV: f64 = 1. / PI;
 pub struct Pathtracing {
     record: HitRecord,
     now_ray: Ray,
-    pdf: f64,
+    roulette_pdf: f64,
     orienting_normal: Vec3,
     throughput: Vec3,
     rad: Color,
-    brdf_sample_pdf: f64,
+    pt_sample_pdf: f64,
     medium_stack: Vec<(i32, f64, f64, f64)>, // (trans_id, ior, sigma_scatter, sigma_extinct)
 }
 
@@ -28,11 +28,11 @@ impl Pathtracing {
         Pathtracing {
             record: HitRecord::new(),
             now_ray: ray,
-            pdf: 1.,
+            roulette_pdf: 1.,
             orienting_normal: Vec3::new(0.),
             throughput: Vec3::new(1.),
             rad: Vec3::new(0.),
-            brdf_sample_pdf: -1.,
+            pt_sample_pdf: -1.,
             medium_stack: vec![(-1, 1., -1., 0.)],
         }
     }
@@ -101,28 +101,27 @@ impl Pathtracing {
             } = &scene.background
             {
                 let pdf = sample_hdr_pdf(cdf, cdf_row, u, v, *px_w, *px_h);
-                self.brdf_sample_pdf / (self.brdf_sample_pdf + pdf)
+                self.pt_sample_pdf / (self.pt_sample_pdf + pdf)
             } else {
                 1.
             };
 
             let background = scene.background.get_color(u, v);
-            self.rad = self.rad + multiply(self.throughput, background) * mis_weight / self.pdf;
+            self.rad =
+                self.rad + multiply(self.throughput, background) * mis_weight / self.roulette_pdf;
             return false;
         }
         true
     }
 
     fn trace_light(&mut self, scene: &Scene) {
-        if self.brdf_sample_pdf < 0. {
-            self.rad = self.rad + multiply(self.throughput, self.record.color) / self.pdf;
+        if self.pt_sample_pdf < 0. {
+            self.rad = self.rad + multiply(self.throughput, self.record.color) / self.roulette_pdf;
         } else {
             let nee_pdf = scene.sample_obj_pdf(self.now_ray.org, &self.record);
-            let mis_weight = self.brdf_sample_pdf
-                / (self.brdf_sample_pdf
-                    + nee_pdf * (-self.get_sigma_e() * self.record.distance).exp());
-            self.rad =
-                self.rad + multiply(self.throughput, self.record.color) * mis_weight / self.pdf;
+            let mis_weight = self.pt_sample_pdf / (self.pt_sample_pdf + nee_pdf);
+            self.rad = self.rad
+                + multiply(self.throughput, self.record.color) * mis_weight / self.roulette_pdf;
         }
     }
 
@@ -136,12 +135,15 @@ impl Pathtracing {
 
         if nee_result.pdf != 0. {
             let nee_dir_cos = dot(self.orienting_normal, nee_result.dir).abs();
-            let mis_weight = 1. / (nee_result.pdf + nee_dir_cos * PI_INV * transmittance);
+            let mis_weight = 1. / (nee_result.pdf + nee_dir_cos * PI_INV);
             self.rad = self.rad
-                + multiply(self.throughput, nee_result.color * PI_INV) * nee_dir_cos * mis_weight
-                    / self.pdf;
+                + multiply(self.throughput, nee_result.color * PI_INV)
+                    * nee_dir_cos
+                    * transmittance
+                    * mis_weight
+                    / self.roulette_pdf;
         }
-        self.brdf_sample_pdf = sample_lambert_pdf(&dir, &self.orienting_normal);
+        self.pt_sample_pdf = sample_lambert_pdf(&dir, &self.orienting_normal);
     }
 
     fn trace_specular(&mut self, cior: &Color, k: &Color) {
@@ -157,7 +159,7 @@ impl Pathtracing {
             fr_conductor(cior, k, &out_dir, &self.orienting_normal)
         };
         self.throughput = multiply(self.throughput, fresnel);
-        self.brdf_sample_pdf = -1.;
+        self.pt_sample_pdf = -1.;
     }
 
     fn trace_dielectric(&mut self, ior_mat: f64, rand: &mut XorRand, trans_id: i32) {
@@ -194,8 +196,8 @@ impl Pathtracing {
         };
 
         self.throughput = multiply(self.throughput, self.record.color) * fresnel * nnt * nnt;
-        self.pdf *= refl_prob;
-        self.brdf_sample_pdf = -1.;
+        self.roulette_pdf *= refl_prob;
+        self.pt_sample_pdf = -1.;
     }
 
     fn trace_microbrdf(
@@ -242,15 +244,17 @@ impl Pathtracing {
             };
             let brdf = nee_fresnel * nee_vndf * g1_nee_wo;
             self.rad = self.rad
-                + multiply(nee_result.color, multiply(self.throughput, brdf)) * mis_weight
-                    / self.pdf;
+                + multiply(nee_result.color, multiply(self.throughput, brdf))
+                    * transmittance
+                    * mis_weight
+                    / self.roulette_pdf;
         }
 
         self.throughput = multiply(self.throughput, fresnel * g1_wo);
         if ax == 0. || ay == 0. {
-            self.brdf_sample_pdf = -1.;
+            self.pt_sample_pdf = -1.;
         } else {
-            self.brdf_sample_pdf = vndf;
+            self.pt_sample_pdf = vndf;
         }
     }
 
@@ -317,14 +321,15 @@ impl Pathtracing {
                             nee_result.color,
                             multiply(self.throughput, self.record.color),
                         ) * nee_btdf
+                            * transmittance
                             * mis_weight
-                            / self.pdf;
+                            / self.roulette_pdf;
                 }
             }
 
             self.throughput = multiply(self.throughput, self.record.color) * fresnel * g1_wo;
-            self.pdf *= refl_prob;
-            self.brdf_sample_pdf = if a == 0. { -1. } else { vndf };
+            self.roulette_pdf *= refl_prob;
+            self.pt_sample_pdf = if a == 0. { -1. } else { vndf };
         } else {
             let org = self.record.pos + self.orienting_normal * 0.00001;
             self.now_ray = Ray { org, dir };
@@ -342,13 +347,15 @@ impl Pathtracing {
                 let nee_fresnel = fr_dielectric_col(&self.record.color, &nee_result.dir, &nee_vn);
                 let brdf = nee_fresnel * nee_vndf * g1_nee_wo;
                 self.rad = self.rad
-                    + multiply(nee_result.color, multiply(self.throughput, brdf)) * mis_weight
-                        / self.pdf;
+                    + multiply(nee_result.color, multiply(self.throughput, brdf))
+                        * transmittance
+                        * mis_weight
+                        / self.roulette_pdf;
             }
 
             self.throughput = multiply(self.throughput, self.record.color) * fresnel * g1_wo;
-            self.pdf *= refl_prob;
-            self.brdf_sample_pdf = if a == 0. { -1. } else { vndf };
+            self.roulette_pdf *= refl_prob;
+            self.pt_sample_pdf = if a == 0. { -1. } else { vndf };
         }
     }
 
@@ -363,11 +370,23 @@ impl Pathtracing {
             let dir = sample_hg_phase(&self.now_ray.dir, 0.9, rand);
             let hg_pdf = hg_phase_pdf(&self.now_ray.dir, &dir, 0.9);
 
-            self.brdf_sample_pdf = hg_pdf;
+            let (nee_result, transmittance) = scene.nee(org, rand, *sigma_e);
+            if nee_result.pdf != 0. {
+                let nee_hg_pdf = hg_phase_pdf(&self.now_ray.dir, &nee_result.dir, 0.9);
+                let mis_weight = 1. / (nee_result.pdf + nee_hg_pdf);
+                self.rad = self.rad
+                    + multiply(self.throughput, nee_result.color)
+                        * nee_hg_pdf
+                        * transmittance
+                        * mis_weight
+                        / self.roulette_pdf;
+            }
+
+            self.pt_sample_pdf = hg_pdf;
             self.now_ray = Ray { org, dir };
             return false;
         }
-        self.brdf_sample_pdf = self.brdf_sample_pdf * (-sigma_e * self.record.distance);
+        self.pt_sample_pdf = self.pt_sample_pdf * (-sigma_e * self.record.distance).exp();
         true
     }
 
@@ -379,7 +398,7 @@ impl Pathtracing {
                     if rand.next01() > roulette_prob {
                         break;
                     }
-                    self.pdf *= roulette_prob;
+                    self.roulette_pdf *= roulette_prob;
                     continue;
                 }
             } else {
@@ -392,7 +411,7 @@ impl Pathtracing {
             if rand.next01() > roulette_prob {
                 break;
             }
-            self.pdf *= roulette_prob;
+            self.roulette_pdf *= roulette_prob;
 
             self.orienting_normal = if dot(self.record.normal, self.now_ray.dir) < 0. {
                 self.record.normal
