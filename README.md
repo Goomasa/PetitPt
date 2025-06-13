@@ -24,7 +24,7 @@ A tiny pathtracer written in Rust
 
 ## Gallery
 
-![Image](images/misty_bunny.jpg)
+<img src="images/misty_bunny.jpg" width=75% height=75%/>
 
 Stanford bunny: 
 

@@ -67,21 +67,31 @@ impl<'a> Scene<'a> {
         // evaluate both of them
         b1 || b2
     }
-    /*
-    fn intersect_medium_list(&self, ray: &Ray, init_e: f64, max_dist: f64) -> Vec<(f64, f64)> {
+
+    fn calc_transmittance(&self, ray: &Ray, init_e: f64, max_dist: f64) -> f64 {
         // return (sigma_extinct, distant)
         let mut mlist = vec![(init_e, 0.)];
         for med in self.mediums.iter() {
             let mut record = HitRecord::init_with_dist(max_dist);
             if med.hit(ray, &mut record) {
-                mlist.push((med.get_bxdf().get_sigma_ex(), record.distance));
+                let sigma_e=med.get_bxdf().get_sigma_ex();
+                if mlist.last().unwrap().0==sigma_e{
+                    mlist.push((0., record.distance));
+                }else{
+                    mlist.push((sigma_e, record.distance));
+                }       
             }
         }
         mlist.push((0., max_dist));
         mlist.sort_by(|(_, d1), (_, d2)| d1.total_cmp(d2));
-        mlist
+        
+        let mut transmittance=1.;
+        for i in 0..mlist.len()-1{
+            transmittance*=(-mlist[i].0*(mlist[i+1].1-mlist[i].1)).exp();
+        }
+
+        transmittance
     }
-    */
 
     pub fn nee(&self, org: Point3, rand: &mut XorRand, sigma_e: f64) -> (NeeResult, f64) {
         let mut nee_result = NeeResult::new();
@@ -133,16 +143,19 @@ impl<'a> Scene<'a> {
         };
 
         let mut record = HitRecord::init_with_dist(dist + 0.1);
-        let _ = self.intersect(&Ray { org, dir }, &mut record, &self.bvh_tree[0]);
+        let ray=Ray { org, dir };
+        let _ = self.intersect_obj(&ray, &mut record, &self.bvh_tree[0]);
         if record.obj_id != obj.get_obj_id() {
             return (nee_result, 1.);
         }
+
+        let transmittance=self.calc_transmittance(&ray, sigma_e, dist);
 
         nee_result.dir = dir;
         nee_result.color = record.color;
         nee_result.pdf = pdf / size as f64;
 
-        (nee_result, (-sigma_e * record.distance).exp())
+        (nee_result, transmittance)
     }
 
     pub fn sample_obj_pdf(&self, org: Point3, record: &HitRecord) -> f64 {

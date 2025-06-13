@@ -189,7 +189,7 @@ pub fn cornel_box() {
 
     let mut objects = vec![&rect0, &rect1, &rect2, &rect3, &rect4, &rect5, &sphere];
     for obj in polygon.iter() {
-        //objects.push(obj);
+        objects.push(obj);
     }
 
     let mediums = vec![&medium];
@@ -215,8 +215,8 @@ pub fn cornel_box() {
         42.,
         96.,
         100.,
-        6,
-        6,
+        8,
+        8,
     );
     let scene = Scene::new(objects, mediums, Texture::set_solid(Vec3::new(0.)));
 

@@ -236,7 +236,7 @@ impl Pathtracing {
             let nee_vndf = g1_wi * d_nee_vn / (4. * dot_wi_n);
 
             let g1_nee_wo = shadow_mask_fn(alpha_sq, &nee_result.dir, &self.orienting_normal);
-            let mis_weight = 1. / (nee_result.pdf + nee_vndf * transmittance);
+            let mis_weight = 1. / (nee_result.pdf + nee_vndf);
             let nee_fresnel = if cior.0 < 0. {
                 fr_dielectric_col(&self.record.color, &nee_result.dir, &nee_vn)
             } else {
@@ -312,7 +312,7 @@ impl Pathtracing {
                         shadow_mask_fn(alpha_sq, &nee_result.dir, &self.orienting_normal);
                     let d_nee_vn = ggx_normal_df(alpha_sq, a, a, &self.orienting_normal, &nee_wh);
                     let nee_vndf = g1_wi * dot(wi, nee_wh) * d_nee_vn * ja / dot_wi_n;
-                    let mis_weight = 1. / (nee_result.pdf + nee_vndf * transmittance);
+                    let mis_weight = 1. / (nee_result.pdf + nee_vndf);
                     let nee_fresnel =
                         fr_dielectric_ior(into, 1., ior_mat, &nee_result.dir, &nee_wh);
                     let nee_btdf = (1. - nee_fresnel) * g1_nee_wo * nee_vndf * dot(wi, nee_wh);
@@ -343,7 +343,7 @@ impl Pathtracing {
                 let nee_vndf = g1_wi * d_nee_vn / (4. * dot_wi_n);
 
                 let g1_nee_wo = shadow_mask_fn(alpha_sq, &nee_result.dir, &self.orienting_normal);
-                let mis_weight = 1. / (nee_result.pdf + nee_vndf * transmittance);
+                let mis_weight = 1. / (nee_result.pdf + nee_vndf);
                 let nee_fresnel = fr_dielectric_col(&self.record.color, &nee_result.dir, &nee_vn);
                 let brdf = nee_fresnel * nee_vndf * g1_nee_wo;
                 self.rad = self.rad
@@ -367,12 +367,12 @@ impl Pathtracing {
         if !scene.intersect(&self.now_ray, &mut self.record, &scene.bvh_tree[0]) {
             self.throughput = self.throughput * *sigma_s / *sigma_e;
             let org = self.now_ray.org + self.now_ray.dir * dist;
-            let dir = sample_hg_phase(&self.now_ray.dir, 0.9, rand);
-            let hg_pdf = hg_phase_pdf(&self.now_ray.dir, &dir, 0.9);
+            let dir = sample_hg_phase(&self.now_ray.dir, 0.8, rand);
+            let hg_pdf = hg_phase_pdf(&self.now_ray.dir, &dir, 0.8);
 
             let (nee_result, transmittance) = scene.nee(org, rand, *sigma_e);
             if nee_result.pdf != 0. {
-                let nee_hg_pdf = hg_phase_pdf(&self.now_ray.dir, &nee_result.dir, 0.9);
+                let nee_hg_pdf = hg_phase_pdf(&self.now_ray.dir, &nee_result.dir, 0.8);
                 let mis_weight = 1. / (nee_result.pdf + nee_hg_pdf);
                 self.rad = self.rad
                     + multiply(self.throughput, nee_result.color)
@@ -386,7 +386,6 @@ impl Pathtracing {
             self.now_ray = Ray { org, dir };
             return false;
         }
-        self.pt_sample_pdf = self.pt_sample_pdf * (-sigma_e * self.record.distance).exp();
         true
     }
 
