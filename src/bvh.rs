@@ -125,12 +125,3 @@ pub fn construct_bvh(scene_objs: &Vec<&Object>) -> BvhTree {
     println!("constructed!, {}", tree.len());
     tree
 }
-
-pub fn check_bvh(tree: &BvhTree) {
-    let mut total = 0;
-    for t in tree.iter() {
-        println!("{:?},{:?},{:?}", t.children, t.elements, t.bbox);
-        total += t.elements.len();
-    }
-    println!("total: {total}")
-}

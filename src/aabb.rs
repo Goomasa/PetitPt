@@ -6,15 +6,14 @@ use crate::{
 
 use std::ops::Add;
 
-#[derive(Debug, Clone, Copy)]
 pub struct AABB {
     pub min_p: Point3,
     pub max_p: Point3,
 }
 
-impl Add for AABB {
+impl Add<&Self> for AABB {
     type Output = Self;
-    fn add(self, rhs: Self) -> Self::Output {
+    fn add(self, rhs: &Self) -> Self::Output {
         let max_p = Vec3(
             fmax(self.max_p.0, rhs.max_p.0),
             fmax(self.max_p.1, rhs.max_p.1),
@@ -38,15 +37,11 @@ impl AABB {
         }
     }
 
-    pub fn hit(&self, ray: &Ray, max_dist: f64) -> bool {
+    pub fn hit(&self, ray: &Ray) -> bool {
         if ray.dir.0 != 0. {
             let t1 = (self.min_p.0 - ray.org.0) / ray.dir.0;
             let t2 = (self.max_p.0 - ray.org.0) / ray.dir.0;
             if t1 < 0. && t2 < 0. {
-                return false;
-            }
-
-            if fmin(t1, t2) > max_dist {
                 return false;
             }
 
@@ -68,10 +63,6 @@ impl AABB {
                 return false;
             }
 
-            if fmin(t1, t2) > max_dist {
-                return false;
-            }
-
             let p1 = ray.org + ray.dir * t1;
             let p2 = ray.org + ray.dir * t2;
 
@@ -87,10 +78,6 @@ impl AABB {
             let t1 = (self.min_p.2 - ray.org.2) / ray.dir.2;
             let t2 = (self.max_p.2 - ray.org.2) / ray.dir.2;
             if t1 < 0. && t2 < 0. {
-                return false;
-            }
-
-            if fmin(t1, t2) > max_dist {
                 return false;
             }
 

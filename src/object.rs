@@ -192,11 +192,11 @@ impl<'a> Object<'a> {
         }
     }
 
-    pub fn get_bxdf(&self) -> Bxdf {
+    pub fn get_bxdf(&'a self) -> &'a Bxdf {
         match self {
             Object::Sphere { bxdf, .. }
             | Object::Rectangle { bxdf, .. }
-            | Object::Triangle { bxdf, .. } => *bxdf,
+            | Object::Triangle { bxdf, .. } => bxdf,
         }
     }
 
@@ -208,11 +208,11 @@ impl<'a> Object<'a> {
         }
     }
 
-    pub fn get_bbox(&self) -> AABB {
+    pub fn get_bbox(&'a self) -> &'a AABB {
         match self {
             Object::Sphere { bbox, .. }
             | Object::Rectangle { bbox, .. }
-            | Object::Triangle { bbox, .. } => *bbox,
+            | Object::Triangle { bbox, .. } => bbox,
         }
     }
 

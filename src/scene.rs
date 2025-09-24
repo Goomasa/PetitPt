@@ -41,7 +41,7 @@ impl<'a> Scene<'a> {
 
     pub fn intersect_obj(&self, ray: &Ray, record: &mut HitRecord, node: &BvhNode) -> bool {
         let (l, r) = node.children;
-        if node.bbox.hit(ray, record.distance) {
+        if node.bbox.hit(ray) {
             if l == -1 {
                 for i in node.elements.iter() {
                     let _ = self.objects[*i].hit(ray, record);
@@ -74,20 +74,20 @@ impl<'a> Scene<'a> {
         for med in self.mediums.iter() {
             let mut record = HitRecord::init_with_dist(max_dist);
             if med.hit(ray, &mut record) {
-                let sigma_e=med.get_bxdf().get_sigma_ex();
-                if mlist.last().unwrap().0==sigma_e{
+                let sigma_e = med.get_bxdf().get_sigma_ex();
+                if mlist.last().unwrap().0 == sigma_e {
                     mlist.push((0., record.distance));
-                }else{
+                } else {
                     mlist.push((sigma_e, record.distance));
-                }       
+                }
             }
         }
         mlist.push((0., max_dist));
         mlist.sort_by(|(_, d1), (_, d2)| d1.total_cmp(d2));
-        
-        let mut transmittance=1.;
-        for i in 0..mlist.len()-1{
-            transmittance*=(-mlist[i].0*(mlist[i+1].1-mlist[i].1)).exp();
+
+        let mut transmittance = 1.;
+        for i in 0..mlist.len() - 1 {
+            transmittance *= (-mlist[i].0 * (mlist[i + 1].1 - mlist[i].1)).exp();
         }
 
         transmittance
@@ -143,13 +143,13 @@ impl<'a> Scene<'a> {
         };
 
         let mut record = HitRecord::init_with_dist(dist + 0.1);
-        let ray=Ray { org, dir };
+        let ray = Ray { org, dir };
         let _ = self.intersect_obj(&ray, &mut record, &self.bvh_tree[0]);
         if record.obj_id != obj.get_obj_id() {
             return (nee_result, 1.);
         }
 
-        let transmittance=self.calc_transmittance(&ray, sigma_e, dist);
+        let transmittance = self.calc_transmittance(&ray, sigma_e, dist);
 
         nee_result.dir = dir;
         nee_result.color = record.color;
