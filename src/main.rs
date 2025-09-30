@@ -39,10 +39,10 @@ pub fn example1() {
     );
 
     let sphere0 = Object::set_sphere(
-        Vec3(-12., 5., 30.),
+        Vec3(-18., 5., 30.),
         4.,
         Bxdf::set_medium(0.1, 0.1, 2),
-        Texture::set_solid(Vec3::new(1.)),
+        Texture::set_solid(Vec3::new(0.9)),
         medium_id,
     );
 
@@ -162,7 +162,7 @@ pub fn cornel_box() {
             Vec3(0.275, 1.116, 1.247),
             Vec3(3.3726, 2.5956, 2.456),
         ),
-        Texture::set_solid(Vec3(0.5, 0.5, 1.)),
+        Texture::set_solid(Vec3::new(1.)),
         obj_id,
     );
 
@@ -192,7 +192,7 @@ pub fn cornel_box() {
         objects.push(obj);
     }
 
-    let mediums = vec![&medium];
+    let mediums = vec![];
     /*
     let camera = PinholeModel::new(
         Vec3(0., 25., 55.),
@@ -225,8 +225,8 @@ pub fn cornel_box() {
 
 fn main() {
     let start = std::time::Instant::now();
-    //example1();
-    cornel_box();
+    example1();
+    //cornel_box();
     let end = start.elapsed();
     println!("{}.{:03}sec", end.as_secs(), end.subsec_nanos() / 1_000_000);
 }

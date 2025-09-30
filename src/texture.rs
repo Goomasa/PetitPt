@@ -38,21 +38,17 @@ impl<'a> Texture<'a> {
         px_w: usize,
         px_h: usize,
     ) -> Self {
-        let mut max_row = vec![0.; px_h];
+        let mut mean_row = vec![0.; px_h];
         for h in 0..px_h {
-            let mut max = 0.;
             let mut sum = 0.;
             for w in 0..px_w {
                 let id = h * px_w + w;
-                if data[id].length() > max {
-                    max = data[id].length();
-                }
                 sum += data[id].length();
             }
-            max_row[h] = sum / px_w as f64;
+            mean_row[h] = sum / px_w as f64;
         }
 
-        let cdf_row = Box::new(make_cdf_1d(&max_row));
+        let cdf_row = Box::new(make_cdf_1d(&mean_row));
 
         Texture::ImageTex {
             data,
@@ -121,7 +117,7 @@ impl<'a> Texture<'a> {
         (
             self.get_color(u, v),
             dir,
-            pdf_u * pdf_v / (2. * PI * sin_theta),
+            pdf_u * pdf_v / (2. * PI.powi(2) * sin_theta),
         )
     }
 }
@@ -150,7 +146,7 @@ pub fn make_cdf_hdr(hdr: &Vec<Color>, px_w: usize, px_h: usize) -> Vec<Vec<f64>>
             if w == 0 {
                 cdf[h][w] = 0.;
             } else {
-                cdf[h][w] = cdf[h][w - 1] + hdr[h * px_w + w].length();
+                cdf[h][w] = cdf[h][w - 1] + hdr[h * px_w + w - 1].length();
             }
         }
 
@@ -170,7 +166,7 @@ fn make_cdf_1d(v: &Vec<f64>) -> Vec<f64> {
         if i == 0 {
             cdf[i] = 0.;
         } else {
-            cdf[i] = cdf[i - 1] + v[i] / sum;
+            cdf[i] = cdf[i - 1] + v[i - 1] / sum;
         }
     }
 
@@ -219,5 +215,5 @@ pub fn sample_hdr_pdf(
         1. - cdf_hdr_row[id_v]
     };
 
-    pdf_u * pdf_v / (2. * PI * (v * PI).cos())
+    pdf_u * pdf_v / (2. * PI.powi(2) * (v * PI).sin())
 }

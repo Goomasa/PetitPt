@@ -41,7 +41,7 @@ impl<'a> Scene<'a> {
 
     pub fn intersect_obj(&self, ray: &Ray, record: &mut HitRecord, node: &BvhNode) -> bool {
         let (l, r) = node.children;
-        if node.bbox.hit(ray) {
+        if node.bbox.hit(ray, record) {
             if l == -1 {
                 for i in node.elements.iter() {
                     let _ = self.objects[*i].hit(ray, record);

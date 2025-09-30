@@ -1,7 +1,7 @@
 use crate::{
     math::{fmax, fmin, Point3, Vec3, INF},
     object::Object,
-    ray::Ray,
+    ray::{HitRecord, Ray},
 };
 
 use std::ops::Add;
@@ -37,11 +37,11 @@ impl AABB {
         }
     }
 
-    pub fn hit(&self, ray: &Ray) -> bool {
+    pub fn hit(&self, ray: &Ray, record: &mut HitRecord) -> bool {
         if ray.dir.0 != 0. {
             let t1 = (self.min_p.0 - ray.org.0) / ray.dir.0;
             let t2 = (self.max_p.0 - ray.org.0) / ray.dir.0;
-            if t1 < 0. && t2 < 0. {
+            if (t1 < 0. && t2 < 0.) || fmin(t1, t2) > record.distance {
                 return false;
             }
 
@@ -59,7 +59,7 @@ impl AABB {
         } else if ray.dir.1 != 0. {
             let t1 = (self.min_p.1 - ray.org.1) / ray.dir.1;
             let t2 = (self.max_p.1 - ray.org.1) / ray.dir.1;
-            if t1 < 0. && t2 < 0. {
+            if (t1 < 0. && t2 < 0.) || fmin(t1, t2) > record.distance {
                 return false;
             }
 
@@ -77,7 +77,7 @@ impl AABB {
         } else if ray.dir.2 != 0. {
             let t1 = (self.min_p.2 - ray.org.2) / ray.dir.2;
             let t2 = (self.max_p.2 - ray.org.2) / ray.dir.2;
-            if t1 < 0. && t2 < 0. {
+            if (t1 < 0. && t2 < 0.) || fmin(t1, t2) > record.distance {
                 return false;
             }
 

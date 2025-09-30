@@ -1,6 +1,6 @@
 use crate::{
     material::*,
-    math::{dot, max_elm, multiply, Color, Vec3, EPS, PI},
+    math::{dot, fmax, fmin, max_elm, multiply, Color, Vec3, EPS, PI},
     object::sphere_uv,
     random::XorRand,
     ray::{HitRecord, Ray},
@@ -37,11 +37,11 @@ impl Pathtracing {
         }
     }
 
-    fn get_sigma_e(&mut self) -> f64 {
+    fn get_sigma_e(&self) -> f64 {
         self.medium_stack.last().unwrap().3
     }
 
-    fn is_into(&mut self, trans_id: i32) -> bool {
+    fn is_into(&self, trans_id: i32) -> bool {
         for (id, ..) in self.medium_stack.iter() {
             if *id == trans_id {
                 return false;
@@ -50,7 +50,7 @@ impl Pathtracing {
         true
     }
 
-    fn has_ior(&mut self) -> bool {
+    fn has_ior(&self) -> bool {
         for (_, ior, ..) in self.medium_stack.iter() {
             if *ior != 1. {
                 return true;
@@ -59,11 +59,8 @@ impl Pathtracing {
         false
     }
 
-    fn has_medium(&mut self) -> bool {
-        if self.medium_stack.last().unwrap().2 < 0. {
-            return false;
-        }
-        true
+    fn has_medium(&self) -> bool {
+        self.medium_stack.last().unwrap().2 >= 0.
     }
 
     fn remove_medium(&mut self, trans_id: i32) {
@@ -72,10 +69,10 @@ impl Pathtracing {
         }
     }
 
-    fn roulette(&mut self, time: u32) -> f64 {
+    fn roulette(&self, time: u32) -> f64 {
         let mut prob = match self.record.bxdf {
             Bxdf::Light => 1.,
-            _ => max_elm(&self.record.color),
+            _ => fmin(max_elm(&self.record.color), 1.),
         };
 
         if time > MAX_DEPTH {
@@ -134,7 +131,7 @@ impl Pathtracing {
         let (nee_result, transmittance) = scene.nee(org, rand, self.get_sigma_e());
 
         if nee_result.pdf != 0. {
-            let nee_dir_cos = dot(self.orienting_normal, nee_result.dir).abs();
+            let nee_dir_cos = fmax(dot(self.orienting_normal, nee_result.dir), 0.);
             let mis_weight = 1. / (nee_result.pdf + nee_dir_cos * PI_INV);
             self.rad = self.rad
                 + multiply(self.throughput, nee_result.color * PI_INV)
