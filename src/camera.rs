@@ -148,6 +148,7 @@ pub struct HexLensModel {
     sspp: u32,
 }
 
+#[allow(unused)]
 impl HexLensModel {
     pub fn new(
         px_w: u32,

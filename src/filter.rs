@@ -5,14 +5,17 @@ use rayon::{
 
 use crate::math::{dot, Color, Vec3};
 
+#[allow(unused)]
 fn gaussian(a_sq: f64, sigma: f64) -> f64 {
     (-a_sq / (2. * sigma * sigma)).exp()
 }
 
+#[allow(unused)]
 fn kernel_size(sigma_s: u32) -> u32 {
     4 * sigma_s + 1
 }
 
+#[allow(unused)]
 pub fn filter(data: &Vec<Color>, px_w: i32, px_h: i32, sigma_s: u32, sigma_r: f64) -> Vec<Color> {
     let kernel_size = kernel_size(sigma_s);
     let d = ((kernel_size - 1) / 2) as i32;
@@ -56,6 +59,7 @@ pub fn filter(data: &Vec<Color>, px_w: i32, px_h: i32, sigma_s: u32, sigma_r: f6
     filtered_data
 }
 
+#[allow(unused)]
 pub fn guided_filter(
     data: &Vec<Color>,
     normals: &Vec<Color>,

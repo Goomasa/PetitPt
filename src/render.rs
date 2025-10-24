@@ -5,7 +5,6 @@ use rayon::prelude::*;
 
 use crate::{
     camera::Camara,
-    filter::{filter, guided_filter},
     math::{clamp_vec, gamma_rev, is_valid, Color, Vec3},
     pathtracing::Pathtracing,
     random::XorRand,

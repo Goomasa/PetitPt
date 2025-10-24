@@ -1,4 +1,4 @@
-use camera::{HexLensModel, LensModel, PinholeModel};
+use camera::{LensModel, PinholeModel};
 use material::Bxdf;
 use math::Vec3;
 use object::{Axis, Object};
@@ -34,7 +34,7 @@ pub fn example1() {
         Vec3(-30., 0., 0.),
         Vec3(30., 0., 60.),
         Bxdf::Lambertian,
-        Texture::set_checker(15, Vec3::new(1.), Vec3::new(0.1)),
+        Texture::set_checker(15, Vec3::new(0.8), Vec3::new(0.1)),
         obj_id,
     );
 
@@ -65,13 +65,8 @@ pub fn example1() {
     let sphere3 = Object::set_sphere(
         Vec3(18., 5., 30.),
         4.,
-        Bxdf::set_microbrdf_co(
-            0.3,
-            0.05,
-            Vec3(0.188, 0.543, 1.332),
-            Vec3(3.403, 2.231, 1.869),
-        ),
-        Texture::set_solid(Vec3::new(1.)),
+        Bxdf::Lambertian,
+        Texture::set_solid(Vec3(0.3, 0.1, 0.8)),
         obj_id,
     );
 
@@ -84,8 +79,8 @@ pub fn example1() {
         300.,
         Vec3(0., 0., -1.).normalize(),
         230.,
-        4,
-        4,
+        8,
+        8,
     );
 
     let scene = Scene::new(
@@ -141,6 +136,7 @@ pub fn cornel_box() {
         Texture::set_solid(Vec3::new(1.)),
         obj_id,
     );
+
     let rect5 = Object::set_rect(
         Axis::Y,
         Vec3(-5., 49.99, -20.),
@@ -192,7 +188,7 @@ pub fn cornel_box() {
         objects.push(obj);
     }
 
-    let mediums = vec![];
+    let mediums = vec![&medium];
     /*
     let camera = PinholeModel::new(
         Vec3(0., 25., 55.),
@@ -201,10 +197,11 @@ pub fn cornel_box() {
         40.,
         Vec3(0., 0., -1.).normalize(),
         30.,
-        2,
-        2,
+        4,
+        4,
     );
     */
+
     let camera = LensModel::new(
         600,
         600,
@@ -218,6 +215,7 @@ pub fn cornel_box() {
         4,
         4,
     );
+
     let scene = Scene::new(objects, mediums, Texture::set_solid(Vec3::new(0.)));
 
     let _ = render(&camera, &scene);
@@ -225,8 +223,8 @@ pub fn cornel_box() {
 
 fn main() {
     let start = std::time::Instant::now();
-    example1();
-    //cornel_box();
+    //example1();
+    cornel_box();
     let end = start.elapsed();
     println!("{}.{:03}sec", end.as_secs(), end.subsec_nanos() / 1_000_000);
 }

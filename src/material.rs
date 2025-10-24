@@ -6,6 +6,7 @@ use crate::{
     random::XorRand,
 };
 
+#[allow(unused)]
 #[derive(Clone, Copy)]
 pub enum Bxdf {
     Lambertian,
@@ -38,6 +39,7 @@ pub enum Bxdf {
     },
 }
 
+#[allow(unused)]
 impl Bxdf {
     pub fn is_light(&self) -> bool {
         match self {
